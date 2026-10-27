@@ -71,13 +71,14 @@ function onMotion(e){
 /* ---- Sentuhan ---- */
 let taps=[];
 addEventListener('pointerdown',()=>{
- if(!started){start();return}
+ if(!started)return;
  const now=performance.now();taps.push(now);taps=taps.filter(t=>now-t<2000);lastAct=now;
  if(emo==='sleep'||emo==='sleepy'){react('surprised',900);return}
  if(taps.length>=4){react('angry',2500,[200,100,200]);taps=[]}
  else react('happy',1500,[30]);
 });
 
+document.getElementById('start').addEventListener('click',()=>{if(!started)start()});
 /* ---- Mulai: layar penuh, wake lock, audio, sensor ---- */
 async function start(){
  started=true;
