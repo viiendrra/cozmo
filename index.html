@@ -7,41 +7,44 @@
 <link rel="manifest" href="manifest.json">
 <title>Cozmo</title>
 <style>
-html,body{margin:0;height:100%;background:#000;overflow:hidden;color:#8ff;font-family:sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}
-#app{display:flex;flex-direction:column;height:100%;position:relative}
-#face{flex:1;width:100%;min-height:0;display:block}
-#ui{padding:8px 14px 14px;background:#061214;border-top:1px solid #0a3a40}
-#np{font-size:14px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
-#seek{width:100%;accent-color:#5ff;margin:0 0 6px}
-#ctl{display:flex;justify-content:space-around;align-items:center}
-button{background:#0b2a2e;color:#8ff;border:1px solid #0e5760;border-radius:50%;width:52px;height:52px;font-size:20px}
-button#play{width:64px;height:64px;font-size:26px;background:#0e5760}
-#list{position:absolute;left:0;right:0;bottom:0;height:55%;background:#031012f2;border-top:2px solid #0e5760;overflow-y:auto;display:none;z-index:5}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;color:#8ff;font-family:'Courier New',monospace;font-weight:bold;-webkit-user-select:none;user-select:none}
+#face{position:absolute;top:0;left:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
+#clk{position:absolute;top:10px;left:0;right:0;text-align:center;font-size:16px;opacity:.45;pointer-events:none}
+#hnd{position:absolute;left:50%;bottom:4px;width:70px;height:26px;margin-left:-35px;text-align:center;font-size:18px;line-height:26px;opacity:.5;touch-action:none}
+#menu{position:absolute;left:0;right:0;bottom:0;height:42%;min-height:250px;box-sizing:border-box;padding:8px 16px 14px;background:#041114;border-top:2px solid #0e5760;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .25s;display:flex;flex-direction:column;justify-content:space-between;z-index:5}
+#menu.on{transform:none}
+#grab{width:44px;height:5px;background:#0e5760;border-radius:3px;margin:0 auto}
+#mclk{text-align:center;font-size:34px;letter-spacing:2px}
+#np{text-align:center;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+#seek{width:100%;accent-color:#5ff;margin:0}
+.row{display:flex;justify-content:space-around;align-items:center}
+button{background:#0b2a2e;color:#8ff;border:1px solid #0e5760;border-radius:50%;width:54px;height:54px;font-size:20px;font-family:inherit}
+#play{width:64px;height:64px;font-size:22px;background:#0e5760}
+.s{width:42px;height:42px;font-size:17px;opacity:.55}
+.s.on{opacity:1;background:#0e5760}
+#list{position:absolute;left:0;right:0;top:22px;bottom:62px;background:#041114;overflow-y:auto;display:none}
 #list.on{display:block}
-#list div{padding:14px;border-bottom:1px solid #0a3a40;font-size:15px}
+#list div{padding:12px 16px;border-bottom:1px solid #0a3a40;font-size:14px}
 #list div.cur{color:#fff;background:#0b2a2e}
-#list p{padding:14px;opacity:.7;margin:0}
+#list p{padding:14px;opacity:.7;margin:0;font-size:13px}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9}
-#ver{position:absolute;top:4px;right:6px;font-size:10px;opacity:.4}
+#ver{position:absolute;top:4px;right:6px;font-size:10px;opacity:.35}
 </style>
 </head>
 <body>
-<div id="app">
-  <canvas id="face"></canvas>
-  <div id="ver">v4</div>
-  <div id="err"></div>
+<canvas id="face"></canvas>
+<div id="clk">--:--</div>
+<div id="ver">v5</div>
+<div id="err"></div>
+<div id="hnd">︿</div>
+<div id="menu">
+  <div id="grab"></div>
+  <div id="mclk">--:--</div>
+  <div id="np">Belum ada lagu</div>
+  <input id="seek" type="range" min="0" max="1000" value="0">
+  <div class="row"><button id="prev">⏮</button><button id="play">▶</button><button id="next">⏭</button></div>
+  <div class="row"><button class="s" id="shuf">⇄</button><button class="s" id="rep">↻</button><button class="s" id="pl">☰</button><button class="s" id="add">＋</button></div>
   <div id="list"></div>
-  <div id="ui">
-    <div id="np">Belum ada lagu - ketuk ＋</div>
-    <input id="seek" type="range" min="0" max="1000" value="0">
-    <div id="ctl">
-      <button id="pl">☰</button>
-      <button id="prev">⏮</button>
-      <button id="play">▶</button>
-      <button id="next">⏭</button>
-      <button id="add">＋</button>
-    </div>
-  </div>
 </div>
 <input id="file" type="file" accept="audio/*" multiple hidden>
 <audio id="au" preload="auto"></audio>
@@ -49,56 +52,56 @@ button#play{width:64px;height:64px;font-size:26px;background:#0e5760}
 (function(){
 var $=function(i){return document.getElementById(i)};
 window.onerror=function(m,s,l){$('err').textContent='ERR: '+m+' @'+l};
-var cv=$('face'),ctx=cv.getContext('2d'),au=$('au'),W=0,H=0;
-function resize(){var r=cv.getBoundingClientRect();W=cv.width=r.width|0;H=cv.height=r.height|0}
+var cv=$('face'),ctx=cv.getContext('2d'),au=$('au'),GW=40,GH=60;
+function resize(){var r=cv.getBoundingClientRect();if(!r.width)return;GH=Math.max(40,Math.round(GW*r.height/r.width));cv.width=GW;cv.height=GH}
 addEventListener('resize',resize);resize();setTimeout(resize,300);
 
 /* ---------- state ---------- */
-var mood='normal',moodUntil=0,lastAct=Date.now(),taps=[],shakes=[];
-var lx=0,ly=0,tx=0,ty=0,tiltX=0,tiltY=0,hs=1,ws=1,nextLook=0,nextBlink=2000,blinkT=-1,flipT=0;
-var energy=0,playing=false,beatPulse=0,animIdx=0,animSince=0;
+var mood='normal',moodUntil=0,lastAct=Date.now(),taps=[],shakes=[],menuOn=false;
+var lx=0,ly=0,tx=0,ty=0,tiltX=0,tiltY=0,nextLook=0,nextBlink=2000,blinkT=-1,flipT=0,lastShake=0;
+var energy=0,beatPulse=0,playing=false,waiting=false,animIdx=0,animSince=0,shY=-30,fy=.45,lastF=0,prevM='',nts=[],lastNote=0;
+var MODES=['notes','eq','dj','sing'];
 function act(){lastAct=Date.now()}
 function setMood(m,ms){mood=m;moodUntil=Date.now()+ms;act()}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 
-/* ---------- audio: beep + analyser ---------- */
+/* ---------- audio ---------- */
 var AC=null,an=null,fd=null,srcDone=false;
 function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if(AC&&AC.state==='suspended')AC.resume();return AC}
 function beep(f,d,v){var a=ac();if(!a)return;var o=a.createOscillator(),g=a.createGain();
-  o.frequency.value=f;o.type='square';g.gain.value=v||.05;o.connect(g);g.connect(a.destination);
-  o.start();o.stop(a.currentTime+d)}
+  o.frequency.value=f;o.type='square';g.gain.value=v||.05;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}
 function hookAnalyser(){
   if(srcDone)return;var a=ac();if(!a)return;
-  try{var s=a.createMediaElementSource(au);an=a.createAnalyser();an.fftSize=256;
-    s.connect(an);an.connect(a.destination);fd=new Uint8Array(an.frequencyBinCount);srcDone=true}catch(e){an=null}
+  try{var s=a.createMediaElementSource(au);an=a.createAnalyser();an.fftSize=256;s.connect(an);an.connect(a.destination);fd=new Uint8Array(an.frequencyBinCount);srcDone=true}catch(e){an=null}
 }
 function readEnergy(t){
-  var e=0;
-  if(an&&fd){an.getByteFrequencyData(fd);var s=0;for(var i=1;i<8;i++)s+=fd[i];e=s/7/255}
-  else e=.35+.35*Math.abs(Math.sin(t/260)); /* cadangan kalau analyser gagal */
+  var e;
+  if(an&&fd&&playing){an.getByteFrequencyData(fd);var s=0;for(var i=1;i<8;i++)s+=fd[i];e=s/7/255}
+  else e=playing?.35+.35*Math.abs(Math.sin(t/260)):0;
   var prev=energy;energy+=(e-energy)*.35;
-  if(e-prev>.12)beatPulse=1;
-  beatPulse*=.88;
+  if(e-prev>.1)beatPulse=1;
+  beatPulse*=.85;
 }
 
-/* ---------- music player ---------- */
-var list=[],cur=-1;
-function name(f){return f.name.replace(/\.[^.]+$/,'')}
+/* ---------- pemutar ---------- */
+var list=[],cur=-1,shuf=false,rep=0,seeking=false;
+function nm(f){return f.name.replace(/\.[^.]+$/,'')}
 function renderList(){
   var L=$('list');L.innerHTML='';
   if(!list.length){L.innerHTML='<p>Daftar kosong. Ketuk ＋ untuk memilih lagu dari HP.</p>';return}
-  list.forEach(function(f,i){var d=document.createElement('div');d.textContent=(i+1)+'. '+name(f);
-    if(i===cur)d.className='cur';d.onclick=function(e){e.stopPropagation();load(i,true);L.classList.remove('on')};L.appendChild(d)});
+  list.forEach(function(f,i){var d=document.createElement('div');d.textContent=(i+1)+'. '+nm(f);
+    if(i===cur)d.className='cur';d.onclick=function(){load(i,true);L.classList.remove('on')};L.appendChild(d)});
 }
 function load(i,go){
   if(!list.length)return;cur=(i+list.length)%list.length;
   if(au.dataset.u)URL.revokeObjectURL(au.dataset.u);
   var u=URL.createObjectURL(list[cur]);au.dataset.u=u;au.src=u;
-  $('np').textContent=name(list[cur]);animIdx=cur;renderList();
+  $('np').textContent=nm(list[cur]);animIdx=cur;renderList();
   if(go)play();
 }
 function play(){hookAnalyser();ac();var p=au.play();if(p&&p.catch)p.catch(function(e){$('err').textContent='Play: '+e.message})}
+function nextIdx(){if(shuf&&list.length>1){var n;do{n=Math.floor(Math.random()*list.length)}while(n===cur);return n}return cur+1}
 $('add').onclick=function(){$('file').click()};
 $('file').onchange=function(e){
   var fs=[].slice.call(e.target.files);if(!fs.length)return;
@@ -107,18 +110,36 @@ $('file').onchange=function(e){
   e.target.value='';
 };
 $('play').onclick=function(){if(cur<0){$('add').onclick();return}if(au.paused)play();else au.pause()};
-$('next').onclick=function(){load(cur+1,!au.paused||true)};
-$('prev').onclick=function(){if(au.currentTime>3)au.currentTime=0;else load(cur-1,true)};
+$('next').onclick=function(){if(list.length)load(nextIdx(),true)};
+$('prev').onclick=function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(cur-1,true)};
 $('pl').onclick=function(){renderList();$('list').classList.toggle('on')};
-au.onplay=function(){playing=true;$('play').textContent='⏸';beep(880,.08);beep(1175,.1)};
+$('shuf').onclick=function(){shuf=!shuf;this.className='s'+(shuf?' on':'')};
+$('rep').onclick=function(){rep=(rep+1)%3;this.className='s'+(rep?' on':'');this.textContent=rep===2?'↻1':'↻'};
+au.onplay=function(){playing=true;$('play').textContent='❚❚';beep(880,.08);beep(1175,.1)};
 au.onpause=function(){playing=false;$('play').textContent='▶'};
-au.onended=function(){if(list.length>1)load(cur+1,true);else{playing=false;$('play').textContent='▶'}};
+au.onended=function(){
+  if(rep===2){au.currentTime=0;play();return}
+  if(!list.length||(!shuf&&cur===list.length-1&&rep===0)){playing=false;$('play').textContent='▶';return}
+  load(nextIdx(),true)};
+au.onloadstart=au.onwaiting=function(){waiting=true};
+au.oncanplay=au.onplaying=function(){waiting=false};
 au.ontimeupdate=function(){if(au.duration&&!seeking)$('seek').value=au.currentTime/au.duration*1000};
-var seeking=false;$('seek').oninput=function(){seeking=true};
+$('seek').oninput=function(){seeking=true};
 $('seek').onchange=function(){if(au.duration)au.currentTime=this.value/1000*au.duration;seeking=false};
-['ui','list'].forEach(function(i){$(i).addEventListener('click',function(e){e.stopPropagation()})});
 
-/* ---------- layar penuh, portrait, wake lock ---------- */
+/* ---------- menu geser ---------- */
+function setMenu(on){menuOn=on;$('menu').classList.toggle('on',on);$('hnd').style.display=on?'none':'block';if(!on)$('list').classList.remove('on');act()}
+$('hnd').onclick=function(){setMenu(true)};
+var sy=null,sx=0;
+document.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;sx=e.touches[0].clientX},{passive:true});
+document.addEventListener('touchend',function(e){
+  if(sy===null)return;var t=e.changedTouches[0],dy=t.clientY-sy,dx=t.clientX-sx;sy=null;
+  var tg=e.target;if(tg.closest&&tg.closest('#list,#seek'))return;
+  if(Math.abs(dy)<55||Math.abs(dx)>Math.abs(dy))return;
+  if(dy<0&&!menuOn)setMenu(true);else if(dy>0&&menuOn)setMenu(false);
+},{passive:true});
+
+/* ---------- layar penuh, wake lock ---------- */
 var wl=null;
 function goFull(){
   var d=document.documentElement,f=d.requestFullscreen||d.mozRequestFullScreen||d.webkitRequestFullscreen;
@@ -132,10 +153,8 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)goFu
 /* ---------- sensor ---------- */
 addEventListener('deviceorientation',function(e){
   if(e.gamma==null)return;
-  tiltX=Math.max(-1,Math.min(1,e.gamma/40));
-  tiltY=Math.max(-1,Math.min(1,((e.beta||0)-75)/40));
+  tiltX=Math.max(-1,Math.min(1,e.gamma/40));tiltY=Math.max(-1,Math.min(1,((e.beta||0)-75)/40));
 });
-var lastShake=0;
 addEventListener('devicemotion',function(e){
   var a=e.accelerationIncludingGravity;if(!a)return;var now=Date.now();
   var mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z);
@@ -147,86 +166,102 @@ addEventListener('devicemotion',function(e){
   if(a.y<-7){if(!flipT)flipT=now;else if(now-flipT>600&&mood!=='angry'){setMood('angry',3000);vib([300,100,300]);beep(180,.4,.08)}}
   else flipT=0;
 });
-
-/* ---------- tap ---------- */
 cv.addEventListener('click',function(){
+  if(menuOn){setMenu(false);return}
   var now=Date.now();taps.push(now);taps=taps.filter(function(t){return now-t<1500});
   if(taps.length>=4){setMood('angry',2500);vib([150,80,150]);beep(200,.25,.08);taps=[]}
   else{setMood('happy',1500);beep(1000+taps.length*200,.08)}
 });
 
-/* ---------- gambar ---------- */
-function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
-function eye(cx,cy,w,h,side,m,ox,oy){
-  var x=cx-w/2+ox,y=cy-h/2+oy;
-  ctx.fillStyle='#5ff';rr(x,y,w,h,w*.3);ctx.fill();
-  ctx.fillStyle='#000';
-  if(m==='happy'){ctx.beginPath();ctx.arc(cx+ox,y+h*1.02,w*.62,0,6.3);ctx.fill()}
-  else if(m==='angry'){var ix=side<0?x+w+4:x-4,ox2=side<0?x-4:x+w+4;
-    ctx.beginPath();ctx.moveTo(ox2,y-4);ctx.lineTo(ix,y-4);ctx.lineTo(ix,y+h*.5);ctx.closePath();ctx.fill()}
+/* ---------- pixel ---------- */
+function R(x,y,w,h){ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function B(map,x,y){for(var r=0;r<map.length;r++)for(var c=0;c<map[r].length;c++)if(map[r].charAt(c)==='#')R(x+c,y+r,1,1)}
+var NOTE=['..##','..#.#','..#','..#','###','###'],ZZ=['####','..#.','.#..','####'];
+/* mata kotak sudut terpotong; fn(i)=pemotongan sisi atas kolom i */
+function eye(x,y,w,h,fn){
+  for(var i=0;i<w;i++){var t=fn?fn(i):0,e=(i===0||i===w-1)?1:0,hh=h-t-e*2;
+    if(hh>0)R(x+i,y+t+e,1,hh)}}
+function caret(cx,y,w){for(var i=0;i<w;i++){var d=Math.abs(i-(w-1)/2);R(cx-w/2+i,y+Math.round(d*.9),1,3)}}
+function lens(x,y){
+  ctx.fillStyle='#5ff';R(x,y,13,8);ctx.fillStyle='#0a2a33';R(x+1,y+1,11,6);
+  ctx.fillStyle='#fff';R(x+2,y+2,3,1);R(x+2,y+3,1,1)}
+function drawNotes(now){
+  if(now-lastNote>(beatPulse>.6?250:900)&&nts.length<5){lastNote=now;nts.push({x:4+Math.random()*(GW-14),y:GH*.8,t:now})}
+  ctx.fillStyle='#fd5';
+  for(var i=nts.length-1;i>=0;i--){var n=nts[i],a=now-n.t,y=n.y-a*.02,x=n.x+Math.sin(a/350)*3;
+    if(y<-8){nts.splice(i,1);continue}
+    B(NOTE,Math.round(x),Math.round(y))}
 }
 
-/* Animasi musik: tambah di sini. Tiap fungsi mengembalikan {dx,dy,sy,sx}.
-   e = energi bass 0..1, b = denyut beat 0..1, t = waktu ms. */
-var ANIMS=[
-  function(e,b,t){return{dx:0,dy:-b*H*.05,sy:1+e*.25,sx:1-e*.08}},                         /* goyang naik-turun */
-  function(e,b,t){return{dx:Math.sin(t/350)*W*.05,dy:-e*H*.03,sy:1+b*.2,sx:1}},            /* geleng kiri-kanan */
-  function(e,b,t){return{dx:0,dy:Math.sin(t/180)*H*.015,sy:.9+b*.4,sx:1+b*.1}}             /* getar mengikuti beat */
-];
+/* ---------- jam ---------- */
+function clk(){var d=new Date(),s=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);$('clk').textContent=s;$('mclk').textContent=s}
+clk();setInterval(clk,1000);
 
+/* ---------- frame ---------- */
 function frame(t){
   requestAnimationFrame(frame);
-  var now=Date.now();
-  if(!W||!H)resize();
+  if(t-lastF<33)return;lastF=t;
+  var now=Date.now();if(!cv.width||GH<40)resize();
   if(playing)act();
   readEnergy(t);
 
-  /* tentukan mood */
   var m=mood;
   if(now>moodUntil){
     var idle=now-lastAct;
-    if(playing)m='happy';
+    if(waiting&&cur>=0)m='think';
+    else if(playing)m='music';
     else if(idle>90000)m='sleep';
     else if(idle>60000)m='sleepy';
     else m='normal';
   }
-  var th=1,tw=1;
-  if(m==='happy'){th=.9}
-  else if(m==='angry'){th=.85}
-  else if(m==='surprised'){th=1.3;tw=1.1}
-  else if(m==='sleepy'){th=.45}
-  else if(m==='sleep'){th=.07}
-  hs+=(th-hs)*.2;ws+=(tw-ws)*.2;
+  if(m!==prevM){cv.style.opacity=m==='sleep'?.4:1;prevM=m}
+  if(m==='music'&&now-animSince>10000){animSince=now;animIdx=(animIdx+1)%MODES.length}
+  var mm=m==='music'?MODES[animIdx%MODES.length]:null;
 
-  /* lirik acak */
   if(now>nextLook){tx=(Math.random()*2-1)*.5;ty=(Math.random()*2-1)*.3;nextLook=now+1500+Math.random()*2500}
-  var ltx=(m==='sleep')?0:tx*.5+tiltX,lty=(m==='sleep')?0:ty*.5+tiltY*.5;
-  lx+=(ltx-lx)*.12;ly+=(lty-ly)*.12;
-
-  /* kedip */
-  if(blinkT<0&&now>nextBlink){blinkT=now}
+  var ltx=m==='sleep'?0:tx*.5+tiltX,lty=m==='sleep'?0:ty*.5+tiltY*.5;
+  lx+=(ltx-lx)*.15;ly+=(lty-ly)*.15;
+  if(blinkT<0&&now>nextBlink)blinkT=now;
   var bl=1;
-  if(blinkT>=0){var p=(now-blinkT)/160;if(p>=1){blinkT=-1;nextBlink=now+2000+Math.random()*3500}else bl=1-Math.sin(p*Math.PI)*.93}
+  if(blinkT>=0){var p=(now-blinkT)/180;if(p>=1){blinkT=-1;nextBlink=now+2000+Math.random()*3500}else bl=1-Math.sin(p*Math.PI)*.9}
+  fy+=((menuOn?.27:.45)-fy)*.15;
 
-  /* animasi musik */
-  var a={dx:0,dy:0,sy:1,sx:1};
-  if(playing&&m==='happy'){
-    if(now-animSince>9000){animSince=now;animIdx=(animIdx+1)%ANIMS.length}
-    a=ANIMS[animIdx%ANIMS.length](energy,beatPulse,t);
-  }
+  ctx.fillStyle='#000';ctx.fillRect(0,0,GW,GH);
+  var by=m==='music'?Math.round(beatPulse*2):0;
+  var cy=Math.round(GH*fy)+by,ox=Math.round(lx*3),oy=Math.round(ly*2),L=6+ox,Rr=24+ox;
+  ctx.fillStyle='#5ff';
 
-  /* gambar */
-  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-  var ew=W*.27*ws*a.sx,eh=Math.min(W*.36,H*.42)*hs*bl*a.sy;
-  var gap=W*.2,cy=H*.5+a.dy,ox=lx*W*.08+a.dx,oy=ly*H*.06;
-  if(m==='happy'||m==='angry'){eh=Math.max(eh,Math.min(W*.36,H*.42)*.8*bl)}
-  eye(W/2-gap,cy,ew,eh,-1,m,ox,oy);
-  eye(W/2+gap,cy,ew,eh,1,m,ox,oy);
+  if(m==='sleep'){eye(L,cy+3,10,2);eye(Rr,cy+3,10,2);
+    ctx.fillStyle='#8af';for(var k=0;k<2;k++){var q=((t/1800)+k*.5)%1;B(ZZ,Math.round(24+q*6),Math.round(cy-6-q*18))}}
+  else if(m==='sleepy'){var hh=Math.max(2,Math.round(14*bl)),lid=function(){return Math.round(hh*.5)};
+    eye(L,cy-7,10,hh,lid);eye(Rr,cy-7,10,hh,lid)}
+  else if(m==='happy'||mm==='notes'||mm==='sing'){
+    caret(L+5,cy-3+oy,10);caret(Rr+5,cy-3+oy,10);
+    if(mm==='sing'){var mw=4+Math.round(energy*8),mh=2+Math.round(energy*7);eye(Math.round(GW/2-mw/2),cy+10,mw,mh)}}
+  else if(m==='surprised'){eye(L-1,cy-11+oy,12,18);eye(Rr-1,cy-11+oy,12,18)}
+  else if(m==='angry'){
+    eye(L,cy-6+oy,10,13,function(i){return Math.round(i*.7)});
+    eye(Rr,cy-6+oy,10,13,function(i){return Math.round((9-i)*.7)})}
+  else if(m==='think'){
+    eye(L+1,cy-3+oy,8,8);eye(Rr-1,cy-8+oy,11,15);
+    var nd=1+Math.floor(t/350)%3;for(var d=0;d<nd;d++)R(GW-14+d*3,6,2,2)}
+  else if(mm==='eq'){
+    var ix=[1,2,4,6,9,14];
+    for(var s2=0;s2<2;s2++)for(var b=0;b<3;b++){
+      var v=an&&fd?fd[ix[s2*3+b]]/255:.3+.4*Math.abs(Math.sin(t/200+b+s2*2));
+      var h2=3+Math.round(v*16);R((s2?Rr:L)+b*4,cy+9-h2,3,h2)}}
+  else if(mm==='dj'){
+    shY+=(0-shY)*.25;
+    eye(L,cy-6,10,12);eye(Rr,cy-6,10,12);
+    var ly2=cy-5+Math.round(shY);lens(L-2,ly2);lens(Rr-2,ly2);ctx.fillStyle='#5ff';R(L+11,ly2+1,Rr-L-13,2)}
+  else{var h3=Math.max(2,Math.round(14*bl));eye(L,cy-h3/2+oy,10,h3);eye(Rr,cy-h3/2+oy,10,h3)}
+  if(mm!=='dj')shY=-30;
+
+  if(playing&&(m==='happy'||mm==='notes'||mm==='sing'||mm==='dj'))drawNotes(now);
+  else if(!playing)nts.length=0;
 }
 requestAnimationFrame(frame);
 renderList();
-
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
 })();
 </script>
