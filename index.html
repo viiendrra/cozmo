@@ -59,7 +59,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v10</div>
+<div id="ver">v11</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -73,6 +73,11 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 <div class="card" id="eyeCard">
   <div class="lbl">Bentuk mata</div>
   <div class="mrow2"><button class="mb" data-e="oval">Lonjong</button><button class="mb" data-e="rect">Persegi</button></div>
+</div>
+
+<div class="card" id="actCard">
+  <div class="lbl">Seberapa sering ganti ekspresi</div>
+  <div class="mrow2"><button class="mb" data-a="tenang">Tenang</button><button class="mb" data-a="normal">Normal</button><button class="mb" data-a="aktif">Aktif</button></div>
   <div class="lbl">Reaksi guncang, miring &amp; ketuk</div>
   <div class="mrow2"><button class="mb" data-r="1">Hidup</button><button class="mb" data-r="0">Mati</button></div>
 </div>
@@ -111,11 +116,11 @@ $('play').innerHTML=PLAY;
 /* ---------- state ---------- */
 var m='normal',t0=Date.now(),pm='',pT0=0,holdUntil=0,moodNext='',moodNextMs=0,autoAt=0,aLast='';
 var taps=[],shakes=[],dizzyAt=[],lastShake=0,flipT=0,held=false,holdT=0,tiltX=0,tiltY=0,reactOn=true,page=0,locked=false,hiddenAt=0,lockT=0;
-var amode='kunci',acats={},ES='oval',MUS=['music','music listen','music dance','music bop','karaoke'];
+var amode='kunci',acats={},ES='oval',alevel='normal',songStyle='',lastSp='',MUS=['music','music listen','music dance','music bop','karaoke'];
 var playing=false,waiting=false;
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function sel(k){pm=m;pT0=t0;m=k;t0=Date.now();if(MUS.indexOf(k)<0){var nn=t0;nts.forEach(function(n){if(!n.k)n.k=nn})}}
-function setMood(k,ms,nx,nms){sel(k);holdUntil=Date.now()+ms;moodNext=nx||'';moodNextMs=nms||0;autoAt=holdUntil+300}
+function setMood(k,ms,nx,nms){aLast='r';sel(k);holdUntil=Date.now()+ms;moodNext=nx||'';moodNextMs=nms||0;autoAt=holdUntil+300}
 
 /* ---------- audio ---------- */
 var AC=null,an=null,fd=null,srcDone=false;
@@ -140,7 +145,7 @@ function renderList(){
     if(i===cur)d.className='cur';d.onclick=function(){load(i,true);L.classList.remove('on')};L.appendChild(d)});
 }
 function load(i,go){
-  if(!list.length)return;cur=(i+list.length)%list.length;
+  if(!list.length)return;cur=(i+list.length)%list.length;songStyle='';autoAt=0;
   if(au.dataset.u)URL.revokeObjectURL(au.dataset.u);
   var u=URL.createObjectURL(list[cur]);au.dataset.u=u;au.src=u;
   var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a;renderList();
@@ -186,9 +191,9 @@ function clk(){var d=new Date();$('bigclk').textContent=('0'+d.getHours()).slice
 clk();setInterval(clk,1000);
 
 /* ---------- halaman (geser kiri-kanan): wajah, jam, player, mode, mata ---------- */
-var CARDS=['clockCard','playCard','modeCard','eyeCard'];
+var CARDS=['clockCard','playCard','modeCard','eyeCard','actCard'];
 function setPage(n){
-  page=Math.max(0,Math.min(4,n));
+  page=Math.max(0,Math.min(5,n));
   CARDS.forEach(function(id,i){$(id).classList.toggle('on',page===i+1)});
   if(page!==2)$('list').classList.remove('on')}
 var sy=null,sx=0;
@@ -201,7 +206,7 @@ document.addEventListener('touchend',function(e){
 },{passive:true});
 
 /* ---------- kunci layar ---------- */
-function updVer(){$('ver').textContent='v10 · '+amode+(locked?' · LOCK':'')}
+function updVer(){$('ver').textContent='v11 · '+amode+(locked?' · LOCK':'')}
 function setLock(on){locked=on;$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
@@ -277,18 +282,19 @@ function aPool(){var r=[];
   else if(amode==='kunci')r=KUNCI.slice();
   else Object.keys(GROUPS).forEach(function(g){if(acats[g])GROUPS[g].forEach(function(k){if(r.indexOf(k)<0)r.push(k)})});
   return r}
+var LV={tenang:[30000,30000],normal:[10000,15000],aktif:[2000,2500]},HEAVY=['cool','silly tongue','laugh','kiss bye','excited','karaoke','music dance','meringis','marah 2','dizzy','nangis'];
 function aNext(now){
-  var pl=playing?MUS:aPool();if(!pl.length)pl=['normal'];var k;
-  if(!playing&&aLast!=='normal'&&pl.indexOf('normal')>=0&&Math.random()<.25)k='normal';
-  else{var c=pl.filter(function(x){return x!==aLast});if(!c.length)c=pl;k=c[Math.floor(Math.random()*c.length)]}
-  aLast=k;sel(k);
-  var d=DUR[k]||4000;if(d<3500&&Math.random()<.35)d*=2;
-  autoAt=now+d}
+  if(playing){if(!songStyle)songStyle=MUS[Math.floor(Math.random()*MUS.length)];aLast=songStyle;sel(songStyle);autoAt=now+3600000;return}
+  if(aLast!=='normal'){aLast='normal';sel('normal');var r=LV[alevel];autoAt=now+r[0]+Math.random()*r[1];return}
+  var pl=aPool().filter(function(x){return x!=='normal'&&x!==lastSp});if(!pl.length)pl=['normal'];
+  var tw=0,w=pl.map(function(x){var v=HEAVY.indexOf(x)>=0?.3:1;tw+=v;return v}),r2=Math.random()*tw,k=pl[0];
+  for(var i=0;i<pl.length;i++){r2-=w[i];if(r2<=0){k=pl[i];break}}
+  lastSp=k;aLast=k;sel(k);autoAt=now+(DUR[k]||4000)}
 
 /* ---------- menu mode, jenis, bentuk mata ---------- */
-function save(){try{localStorage.setItem('cozmo10',JSON.stringify({m:amode,c:acats,e:ES,r:reactOn}))}catch(e){}}
+function save(){try{localStorage.setItem('cozmo10',JSON.stringify({m:amode,c:acats,e:ES,r:reactOn,a:alevel}))}catch(e){}}
 function loadS(){try{var o=JSON.parse(localStorage.getItem('cozmo10')||'{}');
-  if(o.m)amode=o.m;if(o.c)for(var g in o.c)if(g in acats)acats[g]=!!o.c[g];if(o.e)ES=o.e;if(o.r===false)reactOn=false}catch(e){}}
+  if(o.m)amode=o.m;if(o.c)for(var g in o.c)if(g in acats)acats[g]=!!o.c[g];if(o.e)ES=o.e;if(o.a&&LV[o.a])alevel=o.a;if(o.r===false)reactOn=false}catch(e){}}
 function rmodes(){
   [].forEach.call(document.querySelectorAll('#mrow .mb'),function(b){b.className='mb'+(b.dataset.m===amode?' on':'')});
   var jn=amode==='jenis';$('cats').style.display=jn?'flex':'none';$('mhint').style.display=jn?'none':'block';
@@ -298,10 +304,10 @@ function rmodes(){
     b.onclick=function(){acats[g]=!acats[g];rmodes();save()};C.appendChild(b)});
   updVer()}
 [].forEach.call(document.querySelectorAll('#mrow .mb'),function(b){b.onclick=function(){amode=b.dataset.m;autoAt=0;rmodes();save()}});
-function reye(){[].forEach.call(document.querySelectorAll('#eyeCard .mb'),function(b){
-  var on=b.dataset.e?b.dataset.e===ES:(b.dataset.r==='1')===reactOn;b.className='mb'+(on?' on':'')})}
-[].forEach.call(document.querySelectorAll('#eyeCard .mb'),function(b){b.onclick=function(){
-  if(b.dataset.e)ES=b.dataset.e;else reactOn=b.dataset.r==='1';reye();save()}});
+function reye(){[].forEach.call(document.querySelectorAll('#eyeCard .mb,#actCard .mb'),function(b){
+  var on=b.dataset.e?b.dataset.e===ES:(b.dataset.a?b.dataset.a===alevel:(b.dataset.r==='1')===reactOn);b.className='mb'+(on?' on':'')})}
+[].forEach.call(document.querySelectorAll('#eyeCard .mb,#actCard .mb'),function(b){b.onclick=function(){
+  if(b.dataset.e)ES=b.dataset.e;else if(b.dataset.a){alevel=b.dataset.a;autoAt=0;aLast='r'}else reactOn=b.dataset.r==='1';reye();save()}});
 
 /* ---------- engine ekspresi (dari simulator) ---------- */
 var lx=0,ly=0,tx=0,ty=0,nextLook=0,nextBlink=1000,blinkT=-1,blinkDur=200,lastF=0;
@@ -437,7 +443,7 @@ function kf(K,c){for(var i=1;i<K.length;i++)if(c<=K[i][0]){var u=(c-K[i-1][0])/(
 
 function frame(t){
   requestAnimationFrame(frame);
-  if(t-lastF<33)return;lastF=t;
+  if(t-lastF<(m==='normal'&&!playing?45:33))return;lastF=t;
   var now=Date.now();nowG=now;if(!W||!H)resize();
   U=Math.min(W,H*.6);
 
