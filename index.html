@@ -196,10 +196,7 @@ function renderList(){
   if(!list.length){var e=document.createElement('p');e.textContent='Belum ada lagu. Ketuk + untuk memilih lagu dan memberi nama playlist, atau ＋ Folder. Lagu disimpan di browser: tetap ada setelah restart dan bisa diputar tanpa internet.';L.appendChild(e);foot(L);return}
   if(viewPl===null){
     row(L,'Semua lagu',sp(plCount('*')+' ›','go',function(){viewPl='*';renderList()}),scope==='*'?'cur':'',function(){playScope('*')});
-    plNames().forEach(function(p){var r=document.createElement('span');r.style.cssText='display:flex;align-items:center;gap:4px;flex:none';
-      r.appendChild(sp('✕','x',function(e){arm(e,'✕','Hapus?',function(){delPl(p)})}));
-      r.appendChild(sp(plCount(p)+' ›','go',function(){viewPl=p;renderList()}));
-      row(L,p,r,scope===p?'cur':'',function(){playScope(p)})})}
+    plNames().forEach(function(p){row(L,p,sp(plCount(p)+' ›','go',function(){viewPl=p;renderList()}),scope===p?'cur':'',function(){playScope(p)})})}
   else{
     row(L,'‹ '+(viewPl==='*'?'Semua lagu':viewPl),viewPl==='*'?null:sp('Hapus playlist','x',function(e){arm(e,'Hapus playlist','Yakin?',function(){delPl(viewPl)})}),'',function(){viewPl=null;renderList()});
     var k=0;
