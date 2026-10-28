@@ -9,9 +9,10 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;color:#fff;font-family:Roboto,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
 #face{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
-.card{position:absolute;left:14px;right:14px;bottom:36px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;padding:14px 16px;opacity:0;transform:translateY(40px);pointer-events:none;transition:opacity .25s,transform .25s}
+.card{position:absolute;left:14px;right:14px;bottom:36px;height:236px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;padding:14px 16px;opacity:0;transform:translateX(40px);pointer-events:none;transition:opacity .25s,transform .25s}
 .card.on{opacity:1;transform:none;pointer-events:auto}
-#clockCard{text-align:center}
+#clockCard{text-align:center;display:flex;flex-direction:column;justify-content:center}
+#playCard{display:flex;flex-direction:column;justify-content:space-between}
 #bigclk{font-size:64px;font-weight:300;letter-spacing:2px;line-height:1.1}
 #date{font-size:14px;color:#aaa;margin-top:2px}
 #top{display:flex;gap:12px;align-items:center}
@@ -32,7 +33,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 .b.dim{opacity:.45}
 #play{width:56px;height:56px;background:#fff}
 #play svg{fill:#000;width:28px;height:28px}
-#list{position:absolute;left:14px;right:14px;bottom:268px;max-height:32%;overflow-y:auto;border-radius:22px;background:#141416;border:1px solid #2a2a2e;display:none}
+#list{position:absolute;left:14px;right:14px;bottom:282px;max-height:28%;overflow-y:auto;border-radius:22px;background:#141416;border:1px solid #2a2a2e;display:none}
 #list.on{display:block}
 #list div{padding:12px 16px;border-bottom:1px solid #26262a;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #list div.cur{color:#ffe566}
@@ -42,15 +43,21 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #dots i.on{background:#ffe566}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9}
 #ver{position:absolute;top:4px;right:6px;font-size:10px;opacity:.3}
-#modeCard{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#modeCard{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px}
 .mb{background:#1d1d21;border:1px solid #2a2a2e;border-radius:18px;color:#fff;padding:14px 8px;font-size:15px;font-weight:600;text-align:center}
 .mb small{display:block;font-weight:400;font-size:11px;color:#aaa;margin-top:3px}
 .mb.on{border-color:#ffe566;color:#ffe566}
+#lockbtn{position:absolute;top:8px;left:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;opacity:.35;z-index:30;touch-action:none;transition:transform 1s linear,opacity 1s linear}
+#lockbtn svg,#lockov svg{fill:#ffe566}
+#lockbtn.hold{transform:scale(1.5);opacity:1}
+#lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
+#lockov.on{display:block}
+#lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
 </style>
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v7</div>
+<div id="ver">v8</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -79,6 +86,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </div>
 <div id="dots"><i class="on"></i><i></i><i></i><i></i></div>
 
+<div id="lockbtn"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
+<div id="lockov"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
 <input id="file" type="file" accept="audio/*" multiple hidden>
 <audio id="au" preload="auto"></audio>
 <script>
@@ -97,7 +106,7 @@ var mood='normal',moodUntil=0,lastAct=Date.now(),taps=[],shakes=[],page=0,lowBat
 var lx=0,ly=0,tx=0,ty=0,tiltX=0,tiltY=0,nextLook=0,nextBlink=2000,blinkT=-1,flipT=0,lastShake=0;
 var energy=0,beat=false,beatPulse=0,playing=false,waiting=false,lastF=0,prevM='',fy=.46;
 var nextAmb=0,ambUntil=0,ambMood='walk',swDir=1,lastTick=0,swing=0,swx=0,nts=[],lastNote=0;
-var mode='parkir',moodNext='',moodNextMs=0,dizzyAt=[],held=false,holdT=0;
+var mode='parkir',moodNext='',moodNextMs=0,dizzyAt=[],held=false,holdT=0,locked=false,hiddenAt=0,lockT=0;
 var MC={
  parkir:{list:['walk','play'],gap:[8000,8000],boring:25000,sleepy:60000,sleep:90000,react:1,dim:1},
  jalan:{list:['walk','wave','love','wink','walk'],gap:[5000,4000],boring:1e9,sleepy:1e9,sleep:1e9,react:0,dim:1},
@@ -196,16 +205,21 @@ function setPage(n){
 $('dots').onclick=function(){setPage(page>=3?0:page+1)};
 function setMode(k,quiet){mode=k;try{localStorage.setItem('cozmoMode',k)}catch(e){}
   [].forEach.call(document.querySelectorAll('.mb'),function(b){b.className='mb'+(b.dataset.m===k?' on':'')});
-  $('ver').textContent='v7 · '+k;nextAmb=0;ambUntil=0;if(!quiet)setMood('happy',1200)}
+  updVer();nextAmb=0;ambUntil=0;if(!quiet)setMood('happy',1200)}
 [].forEach.call(document.querySelectorAll('.mb'),function(b){b.onclick=function(){setMode(b.dataset.m)}});
+function updVer(){$('ver').textContent='v8 · '+mode+(locked?' · LOCK':'')}
+function setLock(on){locked=on;$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('happy',1000)}
+['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
+$('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
+['touchend','touchcancel'].forEach(function(ev){$('lockbtn').addEventListener(ev,function(){clearTimeout(lockT);this.classList.remove('hold')},{passive:true})});
 setMode(mode,true);
 var sy=null,sx=0;
 document.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;sx=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',function(e){
   if(sy===null)return;var t=e.changedTouches[0],dy=t.clientY-sy,dx=t.clientX-sx;sy=null;
   var tg=e.target;if(tg.closest&&tg.closest('#list,#seek'))return;
-  if(Math.abs(dy)<55||Math.abs(dx)>Math.abs(dy))return;
-  setPage(page+(dy<0?1:-1));
+  if(locked||Math.abs(dx)<55||Math.abs(dy)>Math.abs(dx))return;
+  setPage(page+(dx<0?1:-1));
 },{passive:true});
 
 /* ---------- layar penuh, wake lock ---------- */
@@ -217,7 +231,10 @@ function goFull(){
   try{if(navigator.wakeLock&&!wl)navigator.wakeLock.request('screen').then(function(l){wl=l;l.onrelease=function(){wl=null}}).catch(function(){})}catch(e){}
 }
 document.addEventListener('click',function(){goFull();ac();act()});
-document.addEventListener('visibilitychange',function(){if(!document.hidden)goFull()});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){hiddenAt=Date.now();return}
+  if(locked&&hiddenAt&&Date.now()-hiddenAt>=2000)setLock(false);
+  hiddenAt=0;goFull()});
 
 /* ---------- sensor + ketuk ---------- */
 addEventListener('deviceorientation',function(e){
@@ -346,7 +363,7 @@ function frame(t){
   if(blinkT<0&&now>nextBlink)blinkT=now;
   var bl=1;
   if(blinkT>=0){var p=(now-blinkT)/200;if(p>=1){blinkT=-1;nextBlink=now+2000+Math.random()*3500}else bl=1-Math.sin(p*Math.PI)*.92}
-  fy+=((page>0?.27:.46)-fy)*.15;
+  fy=.4;
 
   /* ayun mengikuti beat */
   var swT=0,swXt=0;
