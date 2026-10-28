@@ -220,7 +220,7 @@ function load(i,go){
   if(!list.length)return;cur=(i+list.length)%list.length;songStyle='';autoAt=0;ivs=[];try{localStorage.setItem('cozmoLast',list[cur].id)}catch(e){}
   if(au.dataset.u)URL.revokeObjectURL(au.dataset.u);
   var u=URL.createObjectURL(list[cur].blob);au.dataset.u=u;au.src=u;
-  var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a+(scope!=='*'?' · '+scope:'');renderList();
+  var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a+(scope!=='*'?' · '+scope:'');renderList();msMeta();
   if(go)play();
 }
 function play(){hookAnalyser();ac();var p=au.play();if(p&&p.catch)p.catch(function(e){$('err').textContent='Play: '+e.message})}
@@ -236,8 +236,23 @@ $('next').onclick=function(){if(list.length)load(nextIdx(),true)};
 $('prev').onclick=function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(nextIdx(-1),true)};
 $('shuf').onclick=function(){shuf=!shuf;this.className='b'+(shuf?'':' dim')};
 $('rep').onclick=function(){rep=(rep+1)%3;this.className='b'+(rep?'':' dim');this.textContent=rep===2?'↻1':'↻'};
-au.onplay=function(){playing=true;$('play').innerHTML=PAUSE;beep(880,.08);beep(1175,.1)};
-au.onpause=function(){playing=false;$('play').innerHTML=PLAY};
+/* ---------- kontrol headset / layar kunci HP (Media Session): ganti lagu, play/pause ---------- */
+function msMeta(){
+  if(!('mediaSession' in navigator)||cur<0||!list[cur])return;
+  var p=parse(list[cur]);
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:p.t,artist:p.a,album:scope!=='*'?scope:'Cozmo'})}catch(e){}}
+function msState(s){try{if('mediaSession' in navigator)navigator.mediaSession.playbackState=s}catch(e){}}
+(function(){
+  if(!('mediaSession' in navigator))return;
+  var h=function(a,f){try{navigator.mediaSession.setActionHandler(a,f)}catch(e){}};
+  h('play',function(){if(cur>=0)play()});
+  h('pause',function(){au.pause()});
+  h('nexttrack',function(){if(list.length)load(nextIdx(),true)});
+  h('previoustrack',function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(nextIdx(-1),true)});
+  h('seekto',function(d){if(au.duration&&d.seekTime!=null)au.currentTime=d.seekTime});
+})();
+au.onplay=function(){playing=true;$('play').innerHTML=PAUSE;msState('playing');beep(880,.08);beep(1175,.1)};
+au.onpause=function(){playing=false;$('play').innerHTML=PLAY;msState('paused')};
 au.onended=function(){
   if(rep===2){au.currentTime=0;play();return}
   if(!list.length||(!shuf&&(function(){var q=qList();return q.indexOf(cur)===q.length-1})()&&rep===0)){playing=false;$('play').innerHTML=PLAY;setMood('sad',4000);return}
