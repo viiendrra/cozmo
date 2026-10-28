@@ -9,7 +9,7 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;color:#fff;font-family:Roboto,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
 #face{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
-.card{will-change:transform,opacity;position:absolute;left:14px;right:14px;bottom:10%;height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;transition:opacity .25s,transform .25s}
+.card{position:absolute;left:14px;right:14px;bottom:10%;height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;transition:opacity .25s,transform .25s}
 .card.on{opacity:1;transform:none;pointer-events:auto}
 #clockCard{text-align:center;display:flex;flex-direction:column;justify-content:center}
 #bigclk{font-size:64px;font-weight:300;letter-spacing:2px;line-height:1.1}
@@ -22,12 +22,11 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #sub{font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 #add{grid-column:3;grid-row:1;align-self:start;width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:none;color:#fff;font-size:20px;line-height:20px;padding:0}
 #prog{grid-column:2/4;grid-row:2;margin:2px 0 0}
-#seek{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:100%;height:14px;background:transparent;outline:none;margin:0;padding:0;display:block}
-#seek::-moz-range-track{background:#555;height:4px;border-radius:2px;border:none}
-#seek::-moz-range-progress{background:#fff;height:4px;border-radius:2px}
-#seek::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,#fff var(--p,0%),#555 var(--p,0%))}
-#seek::-moz-range-thumb{width:12px;height:12px;border:none;border-radius:50%;background:#fff}
-#seek::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;margin-top:-4px}
+#seek{position:relative;width:100%;height:14px;touch-action:none;margin:0}
+#sk,#sf{position:absolute;left:0;top:4px;height:6px}
+#sk{right:0;background:#555}
+#sf{width:0;background:#fff}
+#st{position:absolute;top:1px;left:0;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff}
 #times{display:flex;justify-content:space-between;font-size:11px;color:#aaa;font-variant-numeric:tabular-nums}
 #ctl{grid-column:2/4;grid-row:3;display:flex;justify-content:space-between;align-items:center}
 .b{background:none;border:none;color:#fff;width:34px;height:34px;border-radius:50%;padding:0;font-size:17px;display:flex;align-items:center;justify-content:center}
@@ -98,7 +97,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
     <div id="info"><div id="ttl">Belum ada lagu</div><div id="sub">Ketuk + untuk menambah</div></div>
     <button id="add">+</button>
   </div>
-  <div id="prog"><input id="seek" type="range" min="0" max="1000" step="any" value="0"><div id="times"><span id="tc">0:00</span><span id="tr">-0:00</span></div></div>
+  <div id="prog"><div id="seek"><div id="sk"></div><div id="sf"></div><div id="st"></div></div><div id="times"><span id="tc">0:00</span><span id="tr">-0:00</span></div></div>
   <div id="ctl">
     <button class="b dim" id="shuf">⇄</button>
     <button class="b" id="prev"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6v12L9.5 12z"/></svg></button>
@@ -277,14 +276,25 @@ au.oncanplay=au.onplaying=function(){waiting=false};
 var lastP=-1,lastTc='',lastTr='';
 function prog(){
   var d=au.duration,c=au.currentTime,p=d?c/d*100:0,pr=Math.round(p*10)/10;
-  if(!seeking){$('seek').value=p*10;
-    if(pr!==lastP){lastP=pr;$('seek').style.setProperty('--p',pr+'%')}}
+  if(!seeking&&pr!==lastP){lastP=pr;setBar(pr)}
   var a=ft(c),b='-'+ft(d-c);
   if(a!==lastTc){lastTc=a;$('tc').textContent=a;msPos()}
   if(b!==lastTr){lastTr=b;$('tr').textContent=b}}
 au.ontimeupdate=au.onloadedmetadata=prog;
-$('seek').oninput=function(){seeking=true;$('seek').style.setProperty('--p',this.value/10+'%')};
-$('seek').onchange=function(){if(au.duration)au.currentTime=this.value/1000*au.duration;seeking=false};
+var seekF=0;
+function setBar(pc){$('sf').style.width=pc+'%';$('st').style.left=pc+'%'}
+(function(){var sk=$('seek');
+  function fr(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e,r=sk.getBoundingClientRect();return Math.max(0,Math.min(1,(t.clientX-r.left)/r.width))}
+  function mv(e){seekF=fr(e);setBar(seekF*100);if(e.cancelable)e.preventDefault()}
+  function end(){if(!seeking)return;if(au.duration)au.currentTime=seekF*au.duration;seeking=false;lastP=-1;prog()}
+  sk.addEventListener('touchstart',function(e){seeking=true;mv(e)},{passive:false});
+  sk.addEventListener('touchmove',mv,{passive:false});
+  sk.addEventListener('touchend',end,{passive:true});
+  sk.addEventListener('touchcancel',function(){seeking=false;lastP=-1;prog()},{passive:true});
+  sk.addEventListener('mousedown',function(e){seeking=true;mv(e);
+    var m2=function(ev){mv(ev)},u2=function(){removeEventListener('mousemove',m2);removeEventListener('mouseup',u2);end()};
+    addEventListener('mousemove',m2);addEventListener('mouseup',u2)});
+})();
 
 /* ---------- jam ---------- */
 var HR=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],BL=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -576,7 +586,7 @@ function kf(K,c){for(var i=1;i<K.length;i++)if(c<=K[i][0]){var u=(c-K[i-1][0])/(
 
 function frame(t){
   requestAnimationFrame(frame);
-  if(t-lastF<(m==='normal'&&!playing?45:33))return;lastF=t;
+  if(t-lastF<(page>0?55:(m==='normal'&&!playing?45:33)))return;lastF=t;
   var now=Date.now();nowG=now;if(!W||!H)resize();
   U=Math.min(W,H*.6);
   if(textOn){drawText(now);return}
