@@ -63,7 +63,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #lockov.on{display:block}
 #lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9}
-#ver{position:absolute;top:4px;right:6px;font-size:10px;opacity:.3}
+#ver{position:absolute;top:4px;right:8px;font-size:10px;opacity:.3}
 #list .go{flex:none;padding:2px 6px;color:#aaa;font-size:12px}
 #list .n{flex:none;color:#888;font-size:12px}
 #list .ft{justify-content:space-between}
@@ -72,7 +72,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v14</div>
+<div id="ver">v16</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -275,9 +275,9 @@ document.addEventListener('touchend',function(e){
   setPage(page+(dx<0?1:-1));
 },{passive:true});
 
-/* ---------- kunci layar ---------- */
-function updVer(){$('ver').textContent='v14 · '+amode+(locked?' · LOCK':'')}
-function setLock(on){locked=on;if(on)setMenu(false);$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('wink',1800)}
+/* ---------- kunci layar: halaman yang sedang terbuka (jam / player) tetap tampil, hanya tidak bisa disentuh ---------- */
+function updVer(){$('ver').textContent='v16 · '+amode+(locked?' · LOCK':'')}
+function setLock(on){locked=on;if(on){setMenu(false);$('list').classList.remove('on')}$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
 ['touchend','touchcancel'].forEach(function(ev){$('lockbtn').addEventListener(ev,function(){clearTimeout(lockT);this.classList.remove('hold')},{passive:true})});
