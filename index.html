@@ -56,15 +56,16 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #menu.on{display:flex}
 #menu.dim{opacity:.25}
 #menu .mb{height:32px;font-size:12px}
-#lockbtn{flex:none;width:100%;margin-top:4px;touch-action:none;transition:background 1s linear,color 1s linear}
-#lockbtn.hold{background:#ffe566;color:#000}
+#lockbtn{position:absolute;top:8px;right:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;opacity:.35;z-index:30;touch-action:none;transition:transform 1s linear,opacity 1s linear}
+#lockbtn.hold{transform:scale(1.5);opacity:1}
 #textCard{display:flex;flex-direction:column;justify-content:center;gap:6px}
 #txt{width:100%;box-sizing:border-box;height:34px;border-radius:14px;border:1px solid #2a2a2e;background:#1d1d21;color:#fff;padding:0 12px;font-size:16px;-webkit-user-select:text;user-select:text;outline:none}
-#menubtn svg,#lockov svg{fill:#ffe566}
+#menubtn svg,#lockbtn svg,#lockov svg{fill:#ffe566}
 #lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
 #lockov.on{display:block}
-#lockov svg{display:block;position:absolute;top:6px;right:8px;width:18px;height:18px;opacity:.55;pointer-events:none}
-body.lk #ver{right:34px}
+#lockov svg{display:none}
+body.lk #ver{right:8px}
+body.lk #lockbtn{display:none}
 .rl{display:flex;justify-content:space-between;align-items:center}
 .rs{height:22px;padding:0 10px;border-radius:11px;border:1px solid #2a2a2e;background:#1d1d21;color:#ffe566;font-size:11px;font-weight:600}
 .rs.dim{color:#666}
@@ -73,7 +74,7 @@ body.lk #ver{right:34px}
 body.lk #menubtn{display:none}
 #menu input[type=range]{width:100%;margin:0;accent-color:#ffe566}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9;pointer-events:none}#err:empty{display:none}
-#ver{position:absolute;top:4px;right:8px;font-size:10px;opacity:.3}
+#ver{position:absolute;top:4px;right:52px;font-size:10px;opacity:.3}
 #list .go{flex:none;padding:2px 6px;color:#aaa;font-size:12px}
 #list .n{flex:none;color:#888;font-size:12px}
 #list .ft{justify-content:space-between}
@@ -117,6 +118,7 @@ body.lk #menubtn{display:none}
 </div>
 
 <div id="menubtn"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg></div>
+<div id="lockbtn"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
 <div id="menu">
   <div class="lbl">Bentuk mata</div>
   <div class="mrow2"><button class="mb" data-e="oval">Lonjong</button><button class="mb" data-e="rect">Persegi</button></div>
@@ -129,7 +131,6 @@ body.lk #menubtn{display:none}
   <div class="rl"><span class="lbl">Tinggi wajah</span><button class="rs" id="fyR">Reset</button></div>
   <div class="sw"><i style="left:calc(8px + (100% - 16px)*.45)"></i><input type="range" id="fyS" min="35" max="75" value="53"></div>
   <div class="lbl">Garis kecil di slider = posisi bawaan</div>
-  <button class="mb" id="lockbtn">Kunci layar (tahan 1 detik)</button>
 </div>
 <div id="lockov"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
 <input id="file" type="file" multiple hidden>
@@ -335,7 +336,7 @@ document.addEventListener('touchend',function(e){
 },{passive:true});
 
 /* ---------- kunci layar: halaman yang sedang terbuka (jam / player) tetap tampil, hanya tidak bisa disentuh ---------- */
-function updVer(){$('ver').textContent='v17 · '+amode+''}
+function updVer(){$('ver').textContent='v17 · '+amode+(locked?' · LOCK':'')}
 function setLock(on){locked=on;document.body.classList.toggle('lk',on);if(on){setMenu(false);$('list').classList.remove('on')}$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
