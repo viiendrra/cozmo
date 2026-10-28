@@ -53,11 +53,30 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
 #lockov.on{display:block}
 #lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
+/* v9: kartu kompak seukuran jam, posisi agak tengah, tanpa titik penanda */
+.card{height:132px;bottom:16%;padding:10px 14px}
+#dots{display:none}
+#list{bottom:calc(16% + 144px);max-height:24%}
+.mb{padding:4px;font-size:14px;border-radius:14px}
+.mb small{font-size:10px;margin-top:2px}
+#playCard{display:grid;grid-template-columns:64px 1fr 28px;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;align-content:center}
+#top{display:contents}
+#art{grid-column:1;grid-row:1/4;align-self:center;width:64px;height:64px;font-size:28px}
+#info{grid-column:2;grid-row:1}
+#add{grid-column:3;grid-row:1;align-self:start}
+#ttl{font-size:15px}
+#prog{grid-column:2/4;grid-row:2;margin:2px 0 0}
+#seek{margin:4px 0}
+#ctl{grid-column:2/4;grid-row:3;margin-top:0}
+.b{width:34px;height:34px;font-size:17px}
+.b svg{width:20px;height:20px}
+#play{width:40px;height:40px}
+#play svg{width:22px;height:22px}
 </style>
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v8</div>
+<div id="ver">v9</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -207,7 +226,7 @@ function setMode(k,quiet){mode=k;try{localStorage.setItem('cozmoMode',k)}catch(e
   [].forEach.call(document.querySelectorAll('.mb'),function(b){b.className='mb'+(b.dataset.m===k?' on':'')});
   updVer();nextAmb=0;ambUntil=0;if(!quiet)setMood('happy',1200)}
 [].forEach.call(document.querySelectorAll('.mb'),function(b){b.onclick=function(){setMode(b.dataset.m)}});
-function updVer(){$('ver').textContent='v8 · '+mode+(locked?' · LOCK':'')}
+function updVer(){$('ver').textContent='v9 · '+mode+(locked?' · LOCK':'')}
 function setLock(on){locked=on;$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('happy',1000)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
