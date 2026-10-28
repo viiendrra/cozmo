@@ -54,9 +54,9 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #lockov.on{display:block}
 #lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
 /* v9: kartu kompak seukuran jam, posisi agak tengah, tanpa titik penanda */
-.card{height:132px;bottom:16%;padding:10px 14px}
+.card{height:132px;bottom:10%;padding:10px 14px}
 #dots{display:none}
-#list{bottom:calc(16% + 144px);max-height:24%}
+#list{bottom:calc(10% + 144px);max-height:24%}
 .mb{padding:4px;font-size:14px;border-radius:14px}
 .mb small{font-size:10px;margin-top:2px}
 #playCard{display:grid;grid-template-columns:64px 1fr 28px;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;align-content:center}
@@ -76,7 +76,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v9</div>
+<div id="ver">v9.1</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -226,7 +226,7 @@ function setMode(k,quiet){mode=k;try{localStorage.setItem('cozmoMode',k)}catch(e
   [].forEach.call(document.querySelectorAll('.mb'),function(b){b.className='mb'+(b.dataset.m===k?' on':'')});
   updVer();nextAmb=0;ambUntil=0;if(!quiet)setMood('happy',1200)}
 [].forEach.call(document.querySelectorAll('.mb'),function(b){b.onclick=function(){setMode(b.dataset.m)}});
-function updVer(){$('ver').textContent='v9 · '+mode+(locked?' · LOCK':'')}
+function updVer(){$('ver').textContent='v9.1 · '+mode+(locked?' · LOCK':'')}
 function setLock(on){locked=on;$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('happy',1000)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
@@ -382,7 +382,7 @@ function frame(t){
   if(blinkT<0&&now>nextBlink)blinkT=now;
   var bl=1;
   if(blinkT>=0){var p=(now-blinkT)/200;if(p>=1){blinkT=-1;nextBlink=now+2000+Math.random()*3500}else bl=1-Math.sin(p*Math.PI)*.92}
-  fy=.4;
+  fy=.47;
 
   /* ayun mengikuti beat */
   var swT=0,swXt=0;
