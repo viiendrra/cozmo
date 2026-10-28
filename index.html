@@ -9,7 +9,7 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;color:#fff;font-family:Roboto,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
 #face{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
-.card{position:absolute;left:14px;right:14px;bottom:10%;height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;visibility:hidden;transition:opacity .25s,transform .25s,visibility 0s .25s}
+.card{position:absolute;left:14px;right:14px;bottom:var(--cb,10%);height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;visibility:hidden;transition:opacity .25s,transform .25s,visibility 0s .25s}
 .card.on{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition-delay:0s}
 #clockCard{text-align:center;display:flex;flex-direction:column;justify-content:center}
 #bigclk{font-size:64px;font-weight:300;letter-spacing:2px;line-height:1.1}
@@ -54,6 +54,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #menubtn{position:absolute;top:8px;left:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;opacity:.35;z-index:30}
 #menu{position:absolute;top:52px;left:10px;width:260px;box-sizing:border-box;padding:12px;border-radius:20px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;z-index:40;display:none;flex-direction:column;gap:6px}
 #menu.on{display:flex}
+#menu.dim{opacity:.25}
 #menu .mb{height:32px;font-size:12px}
 #lockbtn{flex:none;width:100%;margin-top:4px;touch-action:none;transition:background 1s linear,color 1s linear}
 #lockbtn.hold{background:#ffe566;color:#000}
@@ -62,7 +63,9 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #menubtn svg,#lockov svg{fill:#ffe566}
 #lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
 #lockov.on{display:block}
-#lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
+#lockov svg{display:none}
+body.lk #menubtn{display:none}
+#menu input[type=range]{width:100%;margin:0;accent-color:#ffe566}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9;pointer-events:none}#err:empty{display:none}
 #ver{position:absolute;top:4px;right:8px;font-size:10px;opacity:.3}
 #list .go{flex:none;padding:2px 6px;color:#aaa;font-size:12px}
@@ -115,6 +118,10 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
   <div class="mrow2"><button class="mb" data-a="tenang">Tenang</button><button class="mb" data-a="normal">Normal</button><button class="mb" data-a="aktif">Aktif</button></div>
   <div class="lbl">Reaksi guncang, miring &amp; ketuk</div>
   <div class="mrow2"><button class="mb" data-r="1">Hidup</button><button class="mb" data-r="0">Mati</button></div>
+  <div class="lbl">Tinggi kartu bawah (jam / musik / mode)</div>
+  <input type="range" id="cbS" min="0" max="40" value="10">
+  <div class="lbl">Tinggi wajah</div>
+  <input type="range" id="fyS" min="35" max="75" value="53">
   <button class="mb" id="lockbtn">Kunci layar (tahan 1 detik)</button>
 </div>
 <div id="lockov"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
@@ -140,7 +147,7 @@ $('play').innerHTML=PLAY;
 var m='normal',t0=Date.now(),pm='',pT0=0,holdUntil=0,moodNext='',moodNextMs=0,autoAt=0,aLast='';
 var taps=[],shakes=[],dizzyAt=[],lastShake=0,flipT=0,held=false,holdT=0,tiltX=0,tiltY=0,reactOn=true,page=0,locked=false,hiddenAt=0,lockT=0;
 var amode='kunci',acats={},ES='oval',alevel='normal',songStyle='',lastSp='',spH=[],textOn=false,txtStr='',txtO='portrait',txKey='',txW=0,menuOpen=false,MUS=['music','music listen','music dance','music bop','karaoke'];
-var playing=false,waiting=false;
+var playing=false,waiting=false,CB=10,FYv=53,FY=.47;
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function sel(k){pm=m;pT0=t0;m=k;t0=Date.now();var mm=MUS.indexOf(pm)>=0&&MUS.indexOf(k)>=0;TRd=mm?650:280;TRr=mm?700:320;TRe=mm?550:220;LR=mm?.08:.22;if(MUS.indexOf(k)<0){var nn=t0;nts.forEach(function(n){if(!n.k)n.k=nn})}}
 function setMood(k,ms,nx,nms){aLast='r';sel(k);holdUntil=Date.now()+ms;moodNext=nx||'';moodNextMs=nms||0;autoAt=holdUntil+300}
@@ -322,7 +329,7 @@ document.addEventListener('touchend',function(e){
 
 /* ---------- kunci layar: halaman yang sedang terbuka (jam / player) tetap tampil, hanya tidak bisa disentuh ---------- */
 function updVer(){$('ver').textContent='v17 · '+amode+(locked?' · LOCK':'')}
-function setLock(on){locked=on;if(on){setMenu(false);$('list').classList.remove('on')}$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();setMood('wink',1800)}
+function setLock(on){locked=on;document.body.classList.toggle('lk',on);if(on){setMenu(false);$('list').classList.remove('on')}$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
 ['touchend','touchcancel'].forEach(function(ev){$('lockbtn').addEventListener(ev,function(){clearTimeout(lockT);this.classList.remove('hold')},{passive:true})});
@@ -364,7 +371,7 @@ addEventListener('devicemotion',function(e){
 });
 cv.addEventListener('click',function(){
   if(held){held=false;return}
-  if(menuOpen){setMenu(false);return}if(page>0){setPage(0);return}
+  if(menuOpen){setMenu(false);return}if(page>0&&!(reactOn&&!textOn&&page<=2)){setPage(0);return}
   if(textOn||!reactOn)return;
   var now=Date.now();taps.push(now);taps=taps.filter(function(t){return now-t<2000});
   var n=taps.length;
@@ -373,7 +380,7 @@ cv.addEventListener('click',function(){
   else if(n===3){setMood('meremehkan',2500);beep(500,.1,.06)}
   else{setMood(n===1?'happy':'big grin',2600);beep(1000+n*200,.08)}
 });
-cv.addEventListener('touchstart',function(){held=false;clearTimeout(holdT);holdT=setTimeout(function(){if(page===0&&reactOn&&!locked&&!textOn&&!menuOpen){held=true;setMood('love',3600);beep(1318,.1,.05);beep(1568,.14,.05)}},650)},{passive:true});
+cv.addEventListener('touchstart',function(){held=false;clearTimeout(holdT);holdT=setTimeout(function(){if(page<=2&&reactOn&&!locked&&!textOn&&!menuOpen){held=true;setMood('love',3600);beep(1318,.1,.05);beep(1568,.14,.05)}},650)},{passive:true});
 ['touchend','touchmove','touchcancel'].forEach(function(ev){cv.addEventListener(ev,function(){clearTimeout(holdT)},{passive:true})});
 
 /* ---------- daftar putar otomatis (dari simulator) ---------- */
@@ -420,9 +427,9 @@ function aNext(now){
   lastSp=k;spH.push(k);if(spH.length>3)spH.shift();aLast=k;sel(k);autoAt=now+(DUR[k]||4000)}
 
 /* ---------- menu mode, jenis, bentuk mata ---------- */
-function save(){try{localStorage.setItem('cozmo10',JSON.stringify({m:amode,c:acats,e:ES,r:reactOn,a:alevel,t:txtStr,o:txtO,x:textOn}))}catch(e){}}
+function save(){try{localStorage.setItem('cozmo10',JSON.stringify({m:amode,c:acats,e:ES,r:reactOn,a:alevel,t:txtStr,o:txtO,x:textOn,cb:CB,fy:FYv}))}catch(e){}}
 function loadS(){try{var o=JSON.parse(localStorage.getItem('cozmo10')||'{}');
-  if(o.m)amode=o.m;if(o.c)for(var g in o.c)if(g in acats)acats[g]=!!o.c[g];if(o.e)ES=o.e;if(o.a&&LV[o.a])alevel=o.a;if(o.t)txtStr=o.t;if(o.o)txtO=o.o;if(o.x&&o.t)textOn=true;if(o.r===false)reactOn=false}catch(e){}}
+  if(o.m)amode=o.m;if(o.c)for(var g in o.c)if(g in acats)acats[g]=!!o.c[g];if(o.e)ES=o.e;if(o.a&&LV[o.a])alevel=o.a;if(o.t)txtStr=o.t;if(o.o)txtO=o.o;if(o.x&&o.t)textOn=true;if(o.r===false)reactOn=false;if(typeof o.cb==='number')CB=Math.max(0,Math.min(40,o.cb));if(typeof o.fy==='number')FYv=Math.max(35,Math.min(75,o.fy))}catch(e){}}
 function rmodes(){
   [].forEach.call(document.querySelectorAll('#mrow .mb'),function(b){b.className='mb'+(b.dataset.m===amode?' on':'')});
   var jn=amode==='jenis';$('cats').style.display=jn?'flex':'none';$('mhint').style.display=jn?'none':'block';
@@ -437,6 +444,11 @@ function reye(){[].forEach.call(document.querySelectorAll(SEL),function(b){
   var on=b.dataset.e?b.dataset.e===ES:(b.dataset.a?b.dataset.a===alevel:(b.dataset.r==='1')===reactOn);b.className='mb'+(on?' on':'')})}
 [].forEach.call(document.querySelectorAll(SEL),function(b){b.onclick=function(){
   if(b.dataset.e)ES=b.dataset.e;else if(b.dataset.a){alevel=b.dataset.a;autoAt=0;aLast='r'}else reactOn=b.dataset.r==='1';reye();save()}});
+function applyPos(){document.documentElement.style.setProperty('--cb',CB+'%');FY=1-FYv/100;$('cbS').value=CB;$('fyS').value=FYv}
+$('cbS').oninput=function(){CB=+this.value;applyPos();if(page===0)setPage(1);save()};
+$('fyS').oninput=function(){FYv=+this.value;applyPos();save()};
+['cbS','fyS'].forEach(function(id){var e=$(id),d=function(){$('menu').classList.add('dim')},u=function(){$('menu').classList.remove('dim')};
+  e.addEventListener('touchstart',d,{passive:true});e.addEventListener('mousedown',d);['touchend','touchcancel','change'].forEach(function(ev){e.addEventListener(ev,u,{passive:true})});addEventListener('mouseup',u)});
 function setMenu(on){menuOpen=on;$('menu').classList.toggle('on',on)}
 $('menubtn').onclick=function(){setMenu(!menuOpen)};
 function rtext(){[].forEach.call(document.querySelectorAll('#textCard .mb[data-o]'),function(b){b.className='mb'+(b.dataset.o===txtO?' on':'')});
@@ -632,14 +644,14 @@ function frame(t){
   var swT=0,swXt=0;
   if(m==='music'){
     if(beat||now-lastTick>700){swDir=-swDir;lastTick=now;
-      if(nts.length<6)nts.push({x:W*(.1+Math.random()*.8),y:H*.47+U*(.2+Math.random()*.25),t:now,d:Math.random()<.4})}
+      if(nts.length<6)nts.push({x:W*(.1+Math.random()*.8),y:H*FY+U*(.2+Math.random()*.25),t:now,d:Math.random()<.4})}
     swT=swDir*(.07+energy*.12);swXt=swDir*U*.04}
   else if(m==='music listen'){
     var ph=Math.sin(now/1100);swT=ph*.1;swXt=ph*U*.04;
-    if(now-lastTick>900){lastTick=now;if(nts.length<5)nts.push({x:W/2+(Math.random()<.5?-1:1)*U*(.4+Math.random()*.15),y:H*.47+U*Math.random()*.1,t:now,d:Math.random()<.5})}}
+    if(now-lastTick>900){lastTick=now;if(nts.length<5)nts.push({x:W/2+(Math.random()<.5?-1:1)*U*(.4+Math.random()*.15),y:H*FY+U*Math.random()*.1,t:now,d:Math.random()<.5})}}
   swing+=(swT-swing)*.22;swx+=(swXt-swx)*.22;
   if(m==='music dance'||m==='music bop'||m==='karaoke'){var ngap=m==='music dance'?500:(m==='karaoke'?700:650);
-    if(now-lastTick>ngap){lastTick=now;if(nts.length<6)nts.push({x:W/2+(Math.random()<.5?-1:1)*U*(.38+Math.random()*.18),y:H*.47+U*(Math.random()*.15-.05),t:now,d:Math.random()<.45})}}
+    if(now-lastTick>ngap){lastTick=now;if(nts.length<6)nts.push({x:W/2+(Math.random()<.5?-1:1)*U*(.38+Math.random()*.18),y:H*FY+U*(Math.random()*.15-.05),t:now,d:Math.random()<.45})}}
 
   switch(m){
   case 'normal':{var nph=tt%9;if(nph>6.4&&nph<7.5){etO='arcU';Q.mw=1.25;Q.mc=.8}break}
@@ -700,7 +712,7 @@ function frame(t){
   var rd=Math.max(0,1-(now-t0)/TRr);rd=rd*rd;
   var oX=vX+rs[0]*rd,oY=vY+rs[1]*rd,oR=vR+rs[2]*rd,oGX=gxo+rs[3]*rd,oGY=gyo+rs[4]*rd;
   lo=[oX,oY,oR,oGX,oGY];
-  var cx=W/2+oX,cy=H*.47+oY;
+  var cx=W/2+oX,cy=H*FY+oY;
 
   ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
   ga=m==='sleep'?.6:1;
@@ -791,7 +803,7 @@ function frame(t){
 dbOpen(function(){dbAll(function(rows){list=rows;try{var sc=localStorage.getItem('cozmoScope');if(sc&&(sc==='*'||plCount(sc)))scope=sc}catch(e){}renderList();
   if(list.length){var lid=0,ix=0;try{lid=+localStorage.getItem('cozmoLast')}catch(e){}list.forEach(function(r,i){if(r.id===lid)ix=i});load(ix,false)}})});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-loadS();$('txt').value=txtStr;rmodes();reye();rtext();setPage(0);renderList();
+loadS();applyPos();$('txt').value=txtStr;rmodes();reye();rtext();setPage(0);renderList();
 sel('normal');autoAt=Date.now()+2500;
 requestAnimationFrame(frame);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
