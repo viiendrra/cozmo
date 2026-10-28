@@ -35,7 +35,10 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #play svg{fill:#000;width:22px;height:22px}
 #list{position:absolute;left:14px;right:14px;bottom:calc(10% + 144px);max-height:24%;overflow-y:auto;border-radius:22px;background:#141416;border:1px solid #2a2a2e;display:none}
 #list.on{display:block}
-#list div{padding:12px 16px;border-bottom:1px solid #26262a;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list div{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid #26262a;font-size:14px}
+#list .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list .x{flex:none;color:#888;padding:2px 6px}
+#list .x.arm{color:#ff5a5a}
 #list div.cur{color:#ffe566}
 #list p{padding:14px;margin:0;font-size:13px;color:#aaa}
 #modeCard,#eyeCard{display:flex;flex-direction:column;justify-content:center;gap:6px}
@@ -61,11 +64,15 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9}
 #ver{position:absolute;top:4px;right:6px;font-size:10px;opacity:.3}
+#list .go{flex:none;padding:2px 6px;color:#aaa;font-size:12px}
+#list .n{flex:none;color:#888;font-size:12px}
+#list .ft{justify-content:space-between}
+#list .mb{flex:none;height:30px;padding:0 12px;font-size:12px}
 </style>
 </head>
 <body>
 <canvas id="face"></canvas>
-<div id="ver">v12</div>
+<div id="ver">v14</div>
 <div id="err"></div>
 
 <div class="card" id="clockCard"><div id="bigclk">--:--</div><div id="date"></div></div>
@@ -111,6 +118,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </div>
 <div id="lockov"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
 <input id="file" type="file" accept="audio/*" multiple hidden>
+<input id="dir" type="file" webkitdirectory multiple hidden>
 <audio id="au" preload="auto"></audio>
 <script>
 (function(){
@@ -128,7 +136,7 @@ var taps=[],shakes=[],dizzyAt=[],lastShake=0,flipT=0,held=false,holdT=0,tiltX=0,
 var amode='kunci',acats={},ES='oval',alevel='normal',songStyle='',lastSp='',spH=[],textOn=false,txtStr='',txtO='portrait',txKey='',txW=0,menuOpen=false,MUS=['music','music listen','music dance','music bop','karaoke'];
 var playing=false,waiting=false;
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
-function sel(k){pm=m;pT0=t0;m=k;t0=Date.now();if(MUS.indexOf(k)<0){var nn=t0;nts.forEach(function(n){if(!n.k)n.k=nn})}}
+function sel(k){pm=m;pT0=t0;m=k;t0=Date.now();var mm=MUS.indexOf(pm)>=0&&MUS.indexOf(k)>=0;TRd=mm?650:280;TRr=mm?700:320;TRe=mm?550:220;LR=mm?.08:.22;if(MUS.indexOf(k)<0){var nn=t0;nts.forEach(function(n){if(!n.k)n.k=nn})}}
 function setMood(k,ms,nx,nms){aLast='r';sel(k);holdUntil=Date.now()+ms;moodNext=nx||'';moodNextMs=nms||0;autoAt=holdUntil+300}
 
 /* ---------- audio ---------- */
@@ -143,43 +151,96 @@ function hookAnalyser(){
 }
 
 /* ---------- pemutar ---------- */
-var list=[],cur=-1,shuf=false,rep=0,seeking=false;
+var list=[],cur=-1,shuf=false,rep=0,seeking=false,scope='*',viewPl=null,NOREL='__norel__';
 function nm(f){return f.name.replace(/\.[^.]+$/,'')}
 function parse(f){var n=nm(f),i=n.indexOf(' - ');return i>0?{a:n.slice(0,i),t:n.slice(i+3)}:{a:'Lokal',t:n}}
 function ft(s){if(!isFinite(s)||s<0)return'0:00';s=Math.floor(s);return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}
+/* ---------- penyimpanan lagu di browser (IndexedDB): tetap ada setelah restart & offline ---------- */
+var DB=null;
+function dbOpen(cb){try{var r=indexedDB.open('cozmo-music',1);
+  r.onupgradeneeded=function(){r.result.createObjectStore('songs',{keyPath:'id',autoIncrement:true})};
+  r.onsuccess=function(){DB=r.result;cb()};r.onerror=function(){$('err').textContent='Penyimpanan lagu tidak bisa dibuka'}}
+  catch(e){$('err').textContent='Penyimpanan lagu tidak tersedia: '+e.message}}
+function dbAll(cb){var out=[];DB.transaction('songs').objectStore('songs').openCursor().onsuccess=function(e){var c=e.target.result;if(c){out.push(c.value);c.continue()}else cb(out)}}
+function dbAdd(f,pl,cb){var d1=0;function fin(a,b){if(!d1){d1=1;cb(a,b)}}
+  try{var tx=DB.transaction('songs','readwrite'),rq=tx.objectStore('songs').add({name:f.name,size:f.size,pl:pl,blob:f,added:Date.now()});
+    rq.onsuccess=function(){fin(rq.result)};tx.onabort=tx.onerror=function(){fin(null,(tx.error&&tx.error.name)||'error')}}catch(e){fin(null,e.message)}}
+function dbDel(id,cb){try{var tx=DB.transaction('songs','readwrite');tx.objectStore('songs').delete(id);tx.oncomplete=cb}catch(e){$('err').textContent='Hapus gagal: '+e.message}}
+function plNames(){var o=[],seen={};list.forEach(function(f){var p=f.pl||'Lainnya';if(!seen[p]){seen[p]=1;o.push(p)}});return o}
+function plCount(p){var n=0;list.forEach(function(f){if(p==='*'||(f.pl||'Lainnya')===p)n++});return n}
+function qList(){var q=[];for(var i=0;i<list.length;i++)if(scope==='*'||(list[i].pl||'Lainnya')===scope)q.push(i);return q}
+function saveScope(){try{localStorage.setItem('cozmoScope',scope)}catch(e){}}
+function stopAll(){au.pause();au.removeAttribute('src');au.load();cur=-1;playing=false;waiting=false;$('play').innerHTML=PLAY;$('ttl').textContent='Belum ada lagu';$('sub').textContent='Ketuk + untuk menambah'}
+function delSong(i){var it=list[i];dbDel(it.id,function(){
+  list.splice(i,1);
+  if(i===cur)stopAll();else if(i<cur)cur--;
+  if(scope!=='*'&&!plCount(scope)){scope='*';saveScope()}
+  if(viewPl&&viewPl!=='*'&&!plCount(viewPl))viewPl=null;
+  renderList();prog()})}
+function delPl(p){var ids=list.filter(function(f){return(f.pl||'Lainnya')===p}).map(function(f){return f.id}),curId=cur>=0?list[cur].id:-1,n=0;
+  (function nx(){if(n>=ids.length){list=list.filter(function(f){return ids.indexOf(f.id)<0});
+    if(curId>=0&&ids.indexOf(curId)>=0)stopAll();else if(curId>=0)cur=list.map(function(f){return f.id}).indexOf(curId);
+    if(scope===p){scope='*';saveScope()}viewPl=null;renderList();prog();return}
+    dbDel(ids[n++],nx)})()}
+function playScope(p){scope=p;saveScope();var q=qList();if(!q.length)return;load(shuf?q[Math.floor(Math.random()*q.length)]:q[0],true);$('list').classList.remove('on')}
+function sp(txt,cls,fn){var e=document.createElement('span');e.className=cls;e.textContent=txt;if(fn)e.onclick=function(ev){ev.stopPropagation();fn(e)};return e}
+function row(L,text,right,cls,fn){var d=document.createElement('div'),t=document.createElement('span');t.className='t';t.textContent=text;d.appendChild(t);if(cls)d.className=cls;d.onclick=fn;if(right)d.appendChild(right);L.appendChild(d)}
+function arm(e,t1,t2,go){if(!e.arm){e.arm=1;e.className='x arm';e.textContent=t2;setTimeout(function(){e.arm=0;e.className='x';e.textContent=t1},3000)}else go()}
+function foot(L){var d=document.createElement('div'),b=document.createElement('button'),tot=0;d.className='ft';b.className='mb';b.textContent='＋ Folder';
+  b.onclick=function(ev){ev.stopPropagation();$('dir').click()};list.forEach(function(f){tot+=f.size||0});
+  d.appendChild(b);d.appendChild(sp(list.length+' lagu · '+(tot/1048576).toFixed(0)+' MB','n'));L.appendChild(d)}
 function renderList(){
   var L=$('list');L.innerHTML='';
-  if(!list.length){L.innerHTML='<p>Daftar kosong. Ketuk + untuk memilih lagu dari HP.</p>';return}
-  list.forEach(function(f,i){var d=document.createElement('div');d.textContent=(i+1)+'. '+nm(f);
-    if(i===cur)d.className='cur';d.onclick=function(){load(i,true);L.classList.remove('on')};L.appendChild(d)});
+  if(!list.length){var e=document.createElement('p');e.textContent='Belum ada lagu. Ketuk + untuk memilih lagu dan memberi nama playlist, atau ＋ Folder. Lagu disimpan di browser: tetap ada setelah restart dan bisa diputar tanpa internet.';L.appendChild(e);foot(L);return}
+  if(viewPl===null){
+    row(L,'Semua lagu',sp(plCount('*')+' ›','go',function(){viewPl='*';renderList()}),scope==='*'?'cur':'',function(){playScope('*')});
+    plNames().forEach(function(p){row(L,p,sp(plCount(p)+' ›','go',function(){viewPl=p;renderList()}),scope===p?'cur':'',function(){playScope(p)})})}
+  else{
+    row(L,'‹ '+(viewPl==='*'?'Semua lagu':viewPl),viewPl==='*'?null:sp('Hapus playlist','x',function(e){arm(e,'Hapus playlist','Yakin?',function(){delPl(viewPl)})}),'',function(){viewPl=null;renderList()});
+    var k=0;
+    list.forEach(function(f,i){if(viewPl!=='*'&&(f.pl||'Lainnya')!==viewPl)return;k++;
+      row(L,k+'. '+nm(f),sp('✕','x',function(e){arm(e,'✕','Hapus?',function(){delSong(i)})}),i===cur?'cur':'',function(){scope=viewPl;saveScope();load(i,true);L.classList.remove('on')})})}
+  foot(L)}
+function importFiles(fs){
+  fs=fs.filter(function(f){return /^audio\//.test(f.type)||/\.(mp3|m4a|aac|ogg|opus|wav|flac|wma)$/i.test(f.name)});
+  if(!fs.length||!DB){$('err').textContent='Tidak ada file audio yang dipilih';return}
+  var g={},pr=false;
+  fs.forEach(function(f){var rp=f.webkitRelativePath||'',p=NOREL;if(rp){var pt=rp.split('/');p=pt.length>1?pt[pt.length-2]:'Lainnya'}else pr=true;(g[p]=g[p]||[]).push(f)});
+  if(pr){var nm0=prompt('Masukkan lagu ke playlist apa? (kosongkan = Lainnya)',scope==='*'?'Lainnya':scope);if(nm0===null)return;nm0=(nm0||'').trim()||'Lainnya';
+    g[nm0]=(g[nm0]||[]).concat(g[NOREL]);delete g[NOREL]}
+  var jobs=[];Object.keys(g).forEach(function(p){g[p].sort(function(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true})}).forEach(function(f){jobs.push([p,f])})});
+  var n=0,first=-1,firstPl='';
+  (function nx(){
+    if(n>=jobs.length){renderList();if(first>=0&&(cur<0||au.paused)){scope=firstPl;saveScope();load(first,true)}else prog();return}
+    var j=jobs[n++];$('sub').textContent='Menyimpan '+n+'/'+jobs.length+'…';
+    dbAdd(j[1],j[0],function(id,err){if(!err){list.push({id:id,name:j[1].name,size:j[1].size,pl:j[0],blob:j[1]});if(first<0){first=list.length-1;firstPl=j[0]}}else $('err').textContent='Gagal simpan: '+err;nx()})})();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(x){}
 }
 function load(i,go){
-  if(!list.length)return;cur=(i+list.length)%list.length;songStyle='';autoAt=0;
+  if(!list.length)return;cur=(i+list.length)%list.length;songStyle='';autoAt=0;ivs=[];try{localStorage.setItem('cozmoLast',list[cur].id)}catch(e){}
   if(au.dataset.u)URL.revokeObjectURL(au.dataset.u);
-  var u=URL.createObjectURL(list[cur]);au.dataset.u=u;au.src=u;
-  var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a;renderList();
+  var u=URL.createObjectURL(list[cur].blob);au.dataset.u=u;au.src=u;
+  var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a+(scope!=='*'?' · '+scope:'');renderList();
   if(go)play();
 }
 function play(){hookAnalyser();ac();var p=au.play();if(p&&p.catch)p.catch(function(e){$('err').textContent='Play: '+e.message})}
-function nextIdx(){if(shuf&&list.length>1){var n;do{n=Math.floor(Math.random()*list.length)}while(n===cur);return n}return cur+1}
+function nextIdx(dir){dir=dir||1;var q=qList();if(!q.length)return cur;
+  if(shuf&&dir>0&&q.length>1){var n;do{n=q[Math.floor(Math.random()*q.length)]}while(n===cur);return n}
+  var p=q.indexOf(cur);if(p<0)return q[dir>0?0:q.length-1];return q[(p+dir+q.length)%q.length]}
 $('add').onclick=function(){$('file').click()};
-$('art').onclick=function(){renderList();$('list').classList.toggle('on')};
-$('file').onchange=function(e){
-  var fs=[].slice.call(e.target.files);if(!fs.length)return;
-  var first=list.length;list=list.concat(fs);renderList();
-  if(cur<0||au.paused)load(first,true);
-  e.target.value='';
-};
+$('art').onclick=function(){viewPl=null;renderList();$('list').classList.toggle('on')};
+$('file').onchange=function(e){var fs=[].slice.call(e.target.files);e.target.value='';importFiles(fs)};
+$('dir').onchange=function(e){var fs=[].slice.call(e.target.files);e.target.value='';importFiles(fs)};
 $('play').onclick=function(){if(cur<0){$('file').click();return}if(au.paused)play();else au.pause()};
 $('next').onclick=function(){if(list.length)load(nextIdx(),true)};
-$('prev').onclick=function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(cur-1,true)};
+$('prev').onclick=function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(nextIdx(-1),true)};
 $('shuf').onclick=function(){shuf=!shuf;this.className='b'+(shuf?'':' dim')};
 $('rep').onclick=function(){rep=(rep+1)%3;this.className='b'+(rep?'':' dim');this.textContent=rep===2?'↻1':'↻'};
 au.onplay=function(){playing=true;$('play').innerHTML=PAUSE;beep(880,.08);beep(1175,.1)};
 au.onpause=function(){playing=false;$('play').innerHTML=PLAY};
 au.onended=function(){
   if(rep===2){au.currentTime=0;play();return}
-  if(!list.length||(!shuf&&cur===list.length-1&&rep===0)){playing=false;$('play').innerHTML=PLAY;setMood('sad',4000);return}
+  if(!list.length||(!shuf&&(function(){var q=qList();return q.indexOf(cur)===q.length-1})()&&rep===0)){playing=false;$('play').innerHTML=PLAY;setMood('sad',4000);return}
   load(nextIdx(),true)};
 au.onerror=function(){playing=false;waiting=false;setMood('bingung',3000);beep(220,.3,.06)};
 au.onloadstart=au.onwaiting=function(){waiting=true};
@@ -215,7 +276,7 @@ document.addEventListener('touchend',function(e){
 },{passive:true});
 
 /* ---------- kunci layar ---------- */
-function updVer(){$('ver').textContent='v12 · '+amode+(locked?' · LOCK':'')}
+function updVer(){$('ver').textContent='v14 · '+amode+(locked?' · LOCK':'')}
 function setLock(on){locked=on;if(on)setMenu(false);$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();if(on)setPage(0);setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
@@ -292,9 +353,21 @@ function aPool(){var r=[];
   else if(amode==='kunci')r=KUNCI.slice();
   else Object.keys(GROUPS).forEach(function(g){if(acats[g])GROUPS[g].forEach(function(k){if(r.indexOf(k)<0)r.push(k)})});
   return r}
+function tempo(){if(ivs.length<4)return 100;var a=ivs.slice().sort(function(x,y){return x-y}),b=60000/a[a.length>>1];while(b>180)b/=2;while(b<60)b*=2;return b}
+function pickMusic(){
+  var f=Math.max(0,Math.min(1,(tempo()-70)/70)),en=avgE,w={};
+  w['music listen']=(1-f)*3+(en<.2?1:0);
+  w['music bop']=Math.max(.5,1.5-Math.abs(f-.45)*2);
+  w['music']=1.2;
+  w['karaoke']=.8+((en>.15&&en<.5)?.4:0);
+  w['music dance']=f*3+(en>.4?1:0);
+  var ks=MUS.filter(function(k){return k!==aLast}),tw=0,i;
+  ks.forEach(function(k){tw+=w[k]});var r=Math.random()*tw,pick=ks[0];
+  for(i=0;i<ks.length;i++){r-=w[ks[i]];if(r<=0){pick=ks[i];break}}
+  return pick}
 var LV={tenang:[30000,30000],normal:[10000,15000],aktif:[2000,2500]},HEAVY=['cool','silly tongue','laugh','kiss bye','excited','karaoke','music dance','meringis','marah 2','dizzy','nangis'];
 function aNext(now){
-  if(playing){if(!songStyle)songStyle=MUS[Math.floor(Math.random()*MUS.length)];aLast=songStyle;sel(songStyle);autoAt=now+3600000;return}
+  if(playing){var mk=pickMusic();aLast=mk;sel(mk);autoAt=now+Math.max(7000,Math.min(16000,16*60000/tempo()));return}
   if(aLast!=='normal'){aLast='normal';sel('normal');var r=LV[alevel];autoAt=now+r[0]+Math.random()*r[1];return}
   var pl=aPool().filter(function(x){return x!=='normal'&&spH.indexOf(x)<0});if(!pl.length)pl=aPool().filter(function(x){return x!=='normal'&&x!==lastSp});if(!pl.length)pl=['normal'];
   var tw=0,w=pl.map(function(x){var v=amode==='kunci'?(GW[x]||1):(HEAVY.indexOf(x)>=0?.3:1);tw+=v;return v}),r2=Math.random()*tw,k=pl[0];
@@ -338,6 +411,7 @@ function drawText(now){
 
 /* ---------- engine ekspresi (dari simulator) ---------- */
 var lx=0,ly=0,tx=0,ty=0,nextLook=0,nextBlink=1000,blinkT=-1,blinkDur=200,lastF=0;
+var ivs=[],avgE=0,TRd=280,TRr=320,TRe=220,LR=.22;
 var energy=0,beat=false,beatPulse=0,lastBeatAt=0,swDir=1,lastTick=0,swing=0,swx=0,nts=[];
 var curET='round',prevET='round',etT=-1e9;
 var lastT0=0,lo=[0,0,0,0,0],rs=[0,0,0,0,0],lastMeno=0,lastSetu=0;
@@ -478,8 +552,8 @@ function frame(t){
   /* energi & beat musik (asli dari analyser) */
   beat=false;var e=0;
   if(playing){if(an&&fd){an.getByteFrequencyData(fd);var s0=0;for(var i0=1;i0<8;i0++)s0+=fd[i0];e=s0/7/255}else e=.35+.3*Math.abs(Math.sin(t/260))}
-  var pe=energy;energy+=(e-energy)*.35;
-  if(e-pe>.1&&now-lastBeatAt>250){beat=true;lastBeatAt=now;beatPulse=1}
+  var pe=energy;energy+=(e-energy)*.35;avgE+=(energy-avgE)*.01;
+  if(e-pe>.1&&now-lastBeatAt>250){var iv=now-lastBeatAt;if(iv<1600){ivs.push(iv);if(ivs.length>12)ivs.shift()}beat=true;lastBeatAt=now;beatPulse=1}
   beatPulse*=.85;
 
   /* pemilih ekspresi: reaksi (tahan) > memuat lagu > musik > putar otomatis */
@@ -494,8 +568,8 @@ function frame(t){
   }
 
   var key=m==='music'?'musicface':m,T=MOODS[key]||MOODS.normal;
-  for(var i=0;i<KEYS.length;i++){var k=KEYS[i];P[k]+=(T[k]-P[k])*.22}
-  DA=Math.min(1,(now-t0)/280);DA=DA*DA*(3-2*DA);
+  for(var i=0;i<KEYS.length;i++){var k=KEYS[i];P[k]+=(T[k]-P[k])*LR}
+  DA=Math.min(1,(now-t0)/TRd);DA=DA*DA*(3-2*DA);
   var Q={};for(var qi=0;qi<KEYS.length;qi++)Q[KEYS[qi]]=P[KEYS[qi]];
   function ov(k,v){Q[k]=P[k]*(1-DA)+v*DA}
   var tt=(now-t0)/1000,gxo=0,gyo=0,fxo=0,fyo=0,fro=0,etO=null,yawnS=0,menoE=0,setuE=0;
@@ -577,7 +651,7 @@ function frame(t){
   gx+=((m==='goodbye'?-U*.075:(m==='karaoke'?-U*.08:0))-gx)*.2;
   var vX=swx+gx+fxo,vY=Q.dy*U+bob+bnc+fyo,vR=Q.tilt+swing+wig+fro;
   if(t0!==lastT0){lastT0=t0;rs=[lo[0]-vX,lo[1]-vY,lo[2]-vR,lo[3]-gxo,m==='cool'?0:lo[4]-gyo]}
-  var rd=Math.max(0,1-(now-t0)/320);rd=rd*rd;
+  var rd=Math.max(0,1-(now-t0)/TRr);rd=rd*rd;
   var oX=vX+rs[0]*rd,oY=vY+rs[1]*rd,oR=vR+rs[2]*rd,oGX=gxo+rs[3]*rd,oGY=gyo+rs[4]*rd;
   lo=[oX,oY,oR,oGX,oGY];
   var cx=W/2+oX,cy=H*.47+oY;
@@ -596,7 +670,7 @@ function frame(t){
     if(etO)et=etO;else if(m==='love')et='heart';else if(m==='dizzy')et='spiral';else if(CHEV[m])et='chev';else if(m==='wink')et='wink';
     else if(m==='blushy'||m==='goodbye')et='arcB';else if(m==='silly tongue')et='chevS';else if(m==='cool')et='shades';else if(ARC[m])et=ARC[m]>0?'arcU':'arcD';else if(m==='music'&&Math.floor(now/8000)%2)et='arcU';else et='round';
     if(et!==curET){prevET=curET;curET=et;etT=now}
-    var ea=Math.min(1,(now-etT)/220);ea=ea*ea*(3-2*ea);
+    var ea=Math.min(1,(now-etT)/TRe);ea=ea*ea*(3-2*ea);
     var tt2=((now-t0)%2600)/2600;wk=tt2<.2?tt2/.2:(tt2<.6?1:(tt2<.8?1-(tt2-.6)/.2:0));wk=wk*wk*(3-2*wk);
     if(ea<1)drawEyes(prevET,1-ea,1+.12*ea);
     drawEyes(curET,ea,.85+.15*ea);
@@ -606,7 +680,7 @@ function frame(t){
       mouth(mxx,myy,U*.13*Q.mw,Q.mc,Q.mo,Q.sk*U)}
 
     if(m==='menolak')lastMeno=menoE;if(m==='setuju')lastSetu=setuE;
-    var mainM=m,tt0=tt,DA0=DA,fpr=Math.min(1,(now-t0)/320);
+    var mainM=m,tt0=tt,DA0=DA,fpr=Math.min(1,(now-t0)/TRr);
     for(var pass=0;pass<2;pass++){
       if(pass===1){if(!pm||pm===mainM||fpr>=1)break;m=pm;tt=(now-pT0)/1000;DA=(1-fpr)*(1-fpr);menoE=lastMeno;setuE=lastSetu}
     A();
@@ -668,6 +742,9 @@ function frame(t){
 }
 
 /* ---------- mulai ---------- */
+dbOpen(function(){dbAll(function(rows){list=rows;try{var sc=localStorage.getItem('cozmoScope');if(sc&&(sc==='*'||plCount(sc)))scope=sc}catch(e){}renderList();
+  if(list.length){var lid=0,ix=0;try{lid=+localStorage.getItem('cozmoLast')}catch(e){}list.forEach(function(r,i){if(r.id===lid)ix=i});load(ix,false)}})});
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 loadS();$('txt').value=txtStr;rmodes();reye();rtext();setPage(0);renderList();
 sel('normal');autoAt=Date.now()+2500;
 requestAnimationFrame(frame);
