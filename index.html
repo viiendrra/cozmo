@@ -9,7 +9,7 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;color:#fff;font-family:Roboto,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
 #face{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
-.card{position:absolute;left:14px;right:14px;bottom:10%;height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;transition:opacity .25s,transform .25s}
+.card{will-change:transform,opacity;position:absolute;left:14px;right:14px;bottom:10%;height:132px;box-sizing:border-box;border-radius:28px;background:#141416;border:1px solid #2a2a2e;box-shadow:0 6px 24px #000c;padding:10px 14px;opacity:0;transform:translateX(40px);pointer-events:none;transition:opacity .25s,transform .25s}
 .card.on{opacity:1;transform:none;pointer-events:auto}
 #clockCard{text-align:center;display:flex;flex-direction:column;justify-content:center}
 #bigclk{font-size:64px;font-weight:300;letter-spacing:2px;line-height:1.1}
@@ -26,7 +26,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #seek::-moz-range-track{background:transparent;height:4px}
 #seek::-moz-range-thumb{width:12px;height:12px;border:none;border-radius:50%;background:#fff}
 #seek::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff}
-#times{display:flex;justify-content:space-between;font-size:11px;color:#aaa}
+#times{display:flex;justify-content:space-between;font-size:11px;color:#aaa;font-variant-numeric:tabular-nums}
 #ctl{grid-column:2/4;grid-row:3;display:flex;justify-content:space-between;align-items:center}
 .b{background:none;border:none;color:#fff;width:34px;height:34px;border-radius:50%;padding:0;font-size:17px;display:flex;align-items:center;justify-content:center}
 .b svg{fill:#fff;width:20px;height:20px}
@@ -96,7 +96,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
     <div id="info"><div id="ttl">Belum ada lagu</div><div id="sub">Ketuk + untuk menambah</div></div>
     <button id="add">+</button>
   </div>
-  <div id="prog"><input id="seek" type="range" min="0" max="1000" value="0"><div id="times"><span id="tc">0:00</span><span id="tr">-0:00</span></div></div>
+  <div id="prog"><input id="seek" type="range" min="0" max="1000" step="any" value="0"><div id="times"><span id="tc">0:00</span><span id="tr">-0:00</span></div></div>
   <div id="ctl">
     <button class="b dim" id="shuf">⇄</button>
     <button class="b" id="prev"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6v12L9.5 12z"/></svg></button>
@@ -244,17 +244,27 @@ function msMeta(){
   var p=parse(list[cur]);
   try{navigator.mediaSession.metadata=new MediaMetadata({title:p.t,artist:p.a,album:scope!=='*'?scope:'Cozmo'})}catch(e){}}
 function msState(s){try{if('mediaSession' in navigator)navigator.mediaSession.playbackState=s}catch(e){}}
-(function(){
+var kt=[];
+function pressN(){var n=Date.now();kt=kt.filter(function(t){return n-t<700});kt.push(n);return kt.length}
+function nxt(){if(list.length)load(nextIdx(),true)}
+function prv(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(nextIdx(-1),true)}
+function msPos(){try{if('mediaSession' in navigator&&navigator.mediaSession.setPositionState&&isFinite(au.duration)&&au.duration>0)navigator.mediaSession.setPositionState({duration:au.duration,playbackRate:1,position:Math.min(au.currentTime,au.duration)})}catch(e){}}
+/* didaftarkan ulang setiap lagu mulai main, karena Firefox kadang melepas handler saat sumber lagu berganti */
+function msInit(){
   if(!('mediaSession' in navigator))return;
   var h=function(a,f){try{navigator.mediaSession.setActionHandler(a,f)}catch(e){}};
-  h('play',function(){if(cur>=0)play()});
-  h('pause',function(){au.pause()});
-  h('nexttrack',function(){if(list.length)load(nextIdx(),true)});
-  h('previoustrack',function(){if(au.currentTime>3)au.currentTime=0;else if(list.length)load(nextIdx(-1),true)});
+  /* cadangan: kalau headset hanya mengirim play/pause, tekan 2x cepat = lagu berikutnya, 3x = sebelumnya */
+  h('play',function(){var c=pressN();if(c===2)nxt();else if(c>=3){kt=[];prv()}else if(cur>=0)play()});
+  h('pause',function(){var c=pressN();if(c===2)nxt();else if(c>=3){kt=[];prv()}else au.pause()});
+  h('nexttrack',nxt);
+  h('previoustrack',prv);
   h('seekto',function(d){if(au.duration&&d.seekTime!=null)au.currentTime=d.seekTime});
-})();
-au.onplay=function(){playing=true;$('play').innerHTML=PAUSE;msState('playing');beep(880,.08);beep(1175,.1)};
-au.onpause=function(){playing=false;$('play').innerHTML=PLAY;msState('paused')};
+  h('seekforward',function(d){au.currentTime=Math.min(au.duration||0,au.currentTime+((d&&d.seekOffset)||10))});
+  h('seekbackward',function(d){au.currentTime=Math.max(0,au.currentTime-((d&&d.seekOffset)||10))});
+  msMeta()}
+msInit();
+au.onplay=function(){playing=true;$('play').innerHTML=PAUSE;msInit();msState('playing');msPos();beep(880,.08);beep(1175,.1)};
+au.onpause=function(){playing=false;$('play').innerHTML=PLAY;msState('paused');msPos()};
 au.onended=function(){
   if(rep===2){au.currentTime=0;play();return}
   if(!list.length||(!shuf&&(function(){var q=qList();return q.indexOf(cur)===q.length-1})()&&rep===0)){playing=false;$('play').innerHTML=PLAY;setMood('sad',4000);return}
@@ -262,11 +272,14 @@ au.onended=function(){
 au.onerror=function(){if(!au.getAttribute('src'))return;playing=false;waiting=false;setMood('bingung',3000);beep(220,.3,.06)};
 au.onloadstart=au.onwaiting=function(){waiting=true};
 au.oncanplay=au.onplaying=function(){waiting=false};
+var lastP=-1,lastTc='',lastTr='';
 function prog(){
-  var d=au.duration,c=au.currentTime,p=d?c/d*100:0;
-  if(!seeking)$('seek').value=p*10;
-  $('seek').style.background='linear-gradient(to right,#fff '+p+'%,#555 '+p+'%)';
-  $('tc').textContent=ft(c);$('tr').textContent='-'+ft(d-c)}
+  var d=au.duration,c=au.currentTime,p=d?c/d*100:0,pr=Math.round(p*10)/10;
+  if(!seeking){$('seek').value=p*10;
+    if(pr!==lastP){lastP=pr;$('seek').style.background='linear-gradient(to right,#fff '+pr+'%,#555 '+pr+'%)'}}
+  var a=ft(c),b='-'+ft(d-c);
+  if(a!==lastTc){lastTc=a;$('tc').textContent=a;msPos()}
+  if(b!==lastTr){lastTr=b;$('tr').textContent=b}}
 au.ontimeupdate=au.onloadedmetadata=prog;
 $('seek').oninput=function(){seeking=true;$('seek').style.background='linear-gradient(to right,#fff '+this.value/10+'%,#555 '+this.value/10+'%)'};
 $('seek').onchange=function(){if(au.duration)au.currentTime=this.value/1000*au.duration;seeking=false};
