@@ -63,7 +63,13 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #menubtn svg,#lockov svg{fill:#ffe566}
 #lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
 #lockov.on{display:block}
-#lockov svg{display:none}
+#lockov svg{display:block;position:absolute;top:6px;right:8px;width:18px;height:18px;opacity:.55;pointer-events:none}
+body.lk #ver{right:34px}
+.rl{display:flex;justify-content:space-between;align-items:center}
+.rs{height:22px;padding:0 10px;border-radius:11px;border:1px solid #2a2a2e;background:#1d1d21;color:#ffe566;font-size:11px;font-weight:600}
+.rs.dim{color:#666}
+.sw{position:relative}
+.sw i{position:absolute;top:50%;width:2px;height:14px;margin:-7px 0 0 -1px;background:#8a8a92;border-radius:1px}
 body.lk #menubtn{display:none}
 #menu input[type=range]{width:100%;margin:0;accent-color:#ffe566}
 #err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9;pointer-events:none}#err:empty{display:none}
@@ -118,10 +124,11 @@ body.lk #menubtn{display:none}
   <div class="mrow2"><button class="mb" data-a="tenang">Tenang</button><button class="mb" data-a="normal">Normal</button><button class="mb" data-a="aktif">Aktif</button></div>
   <div class="lbl">Reaksi guncang, miring &amp; ketuk</div>
   <div class="mrow2"><button class="mb" data-r="1">Hidup</button><button class="mb" data-r="0">Mati</button></div>
-  <div class="lbl">Tinggi kartu bawah (jam / musik / mode)</div>
-  <input type="range" id="cbS" min="0" max="40" value="10">
-  <div class="lbl">Tinggi wajah</div>
-  <input type="range" id="fyS" min="35" max="75" value="53">
+  <div class="rl"><span class="lbl">Tinggi kartu bawah</span><button class="rs" id="cbR">Reset</button></div>
+  <div class="sw"><i style="left:calc(8px + (100% - 16px)*.25)"></i><input type="range" id="cbS" min="0" max="40" value="10"></div>
+  <div class="rl"><span class="lbl">Tinggi wajah</span><button class="rs" id="fyR">Reset</button></div>
+  <div class="sw"><i style="left:calc(8px + (100% - 16px)*.45)"></i><input type="range" id="fyS" min="35" max="75" value="53"></div>
+  <div class="lbl">Garis kecil di slider = posisi bawaan</div>
   <button class="mb" id="lockbtn">Kunci layar (tahan 1 detik)</button>
 </div>
 <div id="lockov"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z"/></svg></div>
@@ -328,7 +335,7 @@ document.addEventListener('touchend',function(e){
 },{passive:true});
 
 /* ---------- kunci layar: halaman yang sedang terbuka (jam / player) tetap tampil, hanya tidak bisa disentuh ---------- */
-function updVer(){$('ver').textContent='v17 · '+amode+(locked?' · LOCK':'')}
+function updVer(){$('ver').textContent='v17 · '+amode+''}
 function setLock(on){locked=on;document.body.classList.toggle('lk',on);if(on){setMenu(false);$('list').classList.remove('on')}$('lockov').classList.toggle('on',on);$('lockbtn').classList.remove('hold');updVer();setMood('wink',1800)}
 ['touchstart','touchmove','touchend','touchcancel','click','mousedown'].forEach(function(ev){$('lockov').addEventListener(ev,function(e){e.preventDefault();e.stopPropagation()},{passive:false})});
 $('lockbtn').addEventListener('touchstart',function(){this.classList.add('hold');clearTimeout(lockT);lockT=setTimeout(function(){setLock(true)},1000)},{passive:true});
@@ -444,7 +451,9 @@ function reye(){[].forEach.call(document.querySelectorAll(SEL),function(b){
   var on=b.dataset.e?b.dataset.e===ES:(b.dataset.a?b.dataset.a===alevel:(b.dataset.r==='1')===reactOn);b.className='mb'+(on?' on':'')})}
 [].forEach.call(document.querySelectorAll(SEL),function(b){b.onclick=function(){
   if(b.dataset.e)ES=b.dataset.e;else if(b.dataset.a){alevel=b.dataset.a;autoAt=0;aLast='r'}else reactOn=b.dataset.r==='1';reye();save()}});
-function applyPos(){document.documentElement.style.setProperty('--cb',CB+'%');FY=1-FYv/100;$('cbS').value=CB;$('fyS').value=FYv}
+function applyPos(){document.documentElement.style.setProperty('--cb',CB+'%');FY=1-FYv/100;$('cbS').value=CB;$('fyS').value=FYv;$('cbR').className='rs'+(CB===10?' dim':'');$('fyR').className='rs'+(FYv===53?' dim':'')}
+$('cbR').onclick=function(){CB=10;applyPos();save()};
+$('fyR').onclick=function(){FYv=53;applyPos();save()};
 $('cbS').oninput=function(){CB=+this.value;applyPos();if(page===0)setPage(1);save()};
 $('fyS').oninput=function(){FYv=+this.value;applyPos();save()};
 ['cbS','fyS'].forEach(function(id){var e=$(id),d=function(){$('menu').classList.add('dim')},u=function(){$('menu').classList.remove('dim')};
