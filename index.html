@@ -62,7 +62,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 #lockov{position:fixed;top:0;left:0;right:0;bottom:0;display:none;z-index:50;touch-action:none}
 #lockov.on{display:block}
 #lockov svg{position:absolute;top:18px;left:18px;opacity:.3;pointer-events:none}
-#err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9}
+#err{position:absolute;top:0;left:0;right:0;color:#f66;font-size:11px;background:#000a;z-index:9;pointer-events:none}#err:empty{display:none}
 #ver{position:absolute;top:4px;right:8px;font-size:10px;opacity:.3}
 #list .go{flex:none;padding:2px 6px;color:#aaa;font-size:12px}
 #list .n{flex:none;color:#888;font-size:12px}
@@ -124,6 +124,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 (function(){
 var $=function(i){return document.getElementById(i)};
 window.onerror=function(m,s,l){$('err').textContent='ERR: '+m+' @'+l};
+/* pesan error hilang sendiri setelah 3 detik */
+var errT=0;try{new MutationObserver(function(){clearTimeout(errT);if($('err').textContent)errT=setTimeout(function(){$('err').textContent=''},3000)}).observe($('err'),{childList:true,characterData:true,subtree:true})}catch(e){}
 var cv=$('face'),ctx=cv.getContext('2d'),au=$('au'),W=0,H=0,U=300,Y='#ffe566';
 function resize(){var r=Math.min(window.devicePixelRatio||1,1.5);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*r;cv.height=H*r;ctx.setTransform(r,0,0,r,0,0)}
 addEventListener('resize',resize);resize();setTimeout(resize,300);
@@ -194,7 +196,10 @@ function renderList(){
   if(!list.length){var e=document.createElement('p');e.textContent='Belum ada lagu. Ketuk + untuk memilih lagu dan memberi nama playlist, atau ＋ Folder. Lagu disimpan di browser: tetap ada setelah restart dan bisa diputar tanpa internet.';L.appendChild(e);foot(L);return}
   if(viewPl===null){
     row(L,'Semua lagu',sp(plCount('*')+' ›','go',function(){viewPl='*';renderList()}),scope==='*'?'cur':'',function(){playScope('*')});
-    plNames().forEach(function(p){row(L,p,sp(plCount(p)+' ›','go',function(){viewPl=p;renderList()}),scope===p?'cur':'',function(){playScope(p)})})}
+    plNames().forEach(function(p){var r=document.createElement('span');r.style.cssText='display:flex;align-items:center;gap:4px;flex:none';
+      r.appendChild(sp('✕','x',function(e){arm(e,'✕','Hapus?',function(){delPl(p)})}));
+      r.appendChild(sp(plCount(p)+' ›','go',function(){viewPl=p;renderList()}));
+      row(L,p,r,scope===p?'cur':'',function(){playScope(p)})})}
   else{
     row(L,'‹ '+(viewPl==='*'?'Semua lagu':viewPl),viewPl==='*'?null:sp('Hapus playlist','x',function(e){arm(e,'Hapus playlist','Yakin?',function(){delPl(viewPl)})}),'',function(){viewPl=null;renderList()});
     var k=0;
@@ -223,7 +228,7 @@ function load(i,go){
   var p=parse(list[cur]);$('ttl').textContent=p.t;$('sub').textContent=p.a+(scope!=='*'?' · '+scope:'');renderList();msMeta();
   if(go)play();
 }
-function play(){hookAnalyser();ac();var p=au.play();if(p&&p.catch)p.catch(function(e){$('err').textContent='Play: '+e.message})}
+function play(){if(!au.getAttribute('src'))return;hookAnalyser();ac();var p=au.play();if(p&&p.catch)p.catch(function(e){$('err').textContent='Play: '+e.message})}
 function nextIdx(dir){dir=dir||1;var q=qList();if(!q.length)return cur;
   if(shuf&&dir>0&&q.length>1){var n;do{n=q[Math.floor(Math.random()*q.length)]}while(n===cur);return n}
   var p=q.indexOf(cur);if(p<0)return q[dir>0?0:q.length-1];return q[(p+dir+q.length)%q.length]}
@@ -257,7 +262,7 @@ au.onended=function(){
   if(rep===2){au.currentTime=0;play();return}
   if(!list.length||(!shuf&&(function(){var q=qList();return q.indexOf(cur)===q.length-1})()&&rep===0)){playing=false;$('play').innerHTML=PLAY;setMood('sad',4000);return}
   load(nextIdx(),true)};
-au.onerror=function(){playing=false;waiting=false;setMood('bingung',3000);beep(220,.3,.06)};
+au.onerror=function(){if(!au.getAttribute('src'))return;playing=false;waiting=false;setMood('bingung',3000);beep(220,.3,.06)};
 au.onloadstart=au.onwaiting=function(){waiting=true};
 au.oncanplay=au.onplaying=function(){waiting=false};
 function prog(){
